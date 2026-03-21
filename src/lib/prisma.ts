@@ -6,6 +6,12 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
+// In development, clear the cached client so every hot-reload picks up the
+// latest generated Prisma client (important after schema migrations).
+if (process.env.NODE_ENV !== "production") {
+  globalForPrisma.prisma = undefined;
+}
+
 function createPrismaClient() {
   const dbPath = path.resolve(process.cwd(), "dev.db");
   const adapter = new PrismaBetterSqlite3({ url: dbPath });
