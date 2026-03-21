@@ -141,7 +141,8 @@ export default function KanbanColumn({
       {/* Droppable zone */}
       <div
         ref={setDropRef}
-        className={`flex flex-col gap-2 flex-1 min-h-[80px] p-1 rounded-xl transition-colors ${isOver ? 'bg-accent/50' : 'bg-muted/30'}`}
+        className="flex flex-col gap-2 flex-1 min-h-[80px] p-1 rounded-xl transition-colors"
+        style={{ backgroundColor: isOver ? `${status.color}30` : `${status.color}12` }}
       >
         <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
           {tasks.map((task) => (

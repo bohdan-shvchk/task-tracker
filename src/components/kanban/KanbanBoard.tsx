@@ -315,7 +315,7 @@ export default function KanbanBoard({ statuses, tasks, projectId, onTaskClick, o
             ) : (
               <button
                 onClick={() => setAddingStatus(true)}
-                className="group flex items-center gap-2 text-sm text-muted-foreground border-2 border-dashed border-border rounded-xl px-3 py-2.5 hover:border-foreground/30 hover:text-foreground transition-all w-fit"
+                className="group flex items-center gap-0 hover:gap-2 text-sm text-muted-foreground border-2 border-dashed border-border rounded-xl p-2.5 hover:px-3 hover:border-foreground/30 hover:text-foreground transition-all duration-200 w-fit"
               >
                 <Plus className="size-4 shrink-0" />
                 <span className="max-w-0 overflow-hidden whitespace-nowrap group-hover:max-w-[120px] transition-all duration-200 ease-in-out">
