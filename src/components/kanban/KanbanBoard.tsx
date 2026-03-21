@@ -238,6 +238,10 @@ export default function KanbanBoard({ statuses, tasks, projectId, onTaskClick, o
     setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, ...updates } : t)))
   }, [setTasks])
 
+  const handleDeleteTask = useCallback((taskId: string) => {
+    setTasks((prev) => prev.filter((t) => t.id !== taskId))
+  }, [setTasks])
+
   const handleChangeStatusColor = async (statusId: string, color: string) => {
     setLocalStatuses((prev) => {
       const next = prev.map((s) => (s.id === statusId ? { ...s, color } : s))
@@ -294,6 +298,7 @@ export default function KanbanBoard({ statuses, tasks, projectId, onTaskClick, o
               onRenameStatus={handleRenameStatus}
               onChangeStatusColor={handleChangeStatusColor}
               onUpdateTask={handleUpdateTask}
+              onDeleteTask={handleDeleteTask}
             />
           ))}
 

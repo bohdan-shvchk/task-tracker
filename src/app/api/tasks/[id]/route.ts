@@ -50,7 +50,7 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { title, description, priority, deadline, statusId, order } = body;
+    const { title, description, priority, deadline, statusId, order, deletedAt } = body;
 
     const task = await prisma.task.update({
       where: { id },
@@ -63,13 +63,15 @@ export async function PATCH(
         }),
         ...(statusId !== undefined && { statusId }),
         ...(order !== undefined && { order }),
+        ...(deletedAt !== undefined && {
+          deletedAt: deletedAt ? new Date(deletedAt) : null,
+        }),
       },
       include: {
         status: true,
         project: true,
         labels: { include: { label: true } },
         tags: { include: { tag: true } },
-        timeLogs: true,
         _count: { select: { subtasks: true, attachments: true } },
       },
     });

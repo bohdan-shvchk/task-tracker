@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Paperclip, ChevronDown, ChevronUp, CalendarIcon, Flag, Tag } from 'lucide-react'
+import { Paperclip, ChevronDown, ChevronUp, CalendarIcon, Flag, Tag, MoreVertical, Trash2, ListPlus } from 'lucide-react'
 import { Task, Label } from '@/lib/types'
 import { useTimerStore } from '@/store/timer-store'
 import { formatDuration } from '@/lib/format-time'
@@ -35,9 +35,10 @@ interface Props {
   task: Task
   onClick: () => void
   onUpdate?: (updates: Partial<Task>) => void
+  onDelete?: () => void
 }
 
-export default function KanbanCard({ task, onClick, onUpdate }: Props) {
+export default function KanbanCard({ task, onClick, onUpdate, onDelete }: Props) {
   const [subtasksOpen, setSubtasksOpen] = useState(false)
   const [deadline, setDeadline] = useState<Date | undefined>(
     task.deadline ? new Date(task.deadline) : undefined
@@ -52,8 +53,10 @@ export default function KanbanCard({ task, onClick, onUpdate }: Props) {
 
   const isTimingThis = isRunning && activeTask?.id === task.id
   const attachCount = task._count?.attachments ?? task.attachments?.length ?? 0
-  const subtaskCount = task._count?.subtasks ?? task.subtasks?.length ?? 0
   const subtasks = task.subtasks ?? []
+  const subtaskCount = task._count?.subtasks ?? subtasks.length
+
+  const doneSubtasks = subtasks.filter((s) => s.status?.isDone === true).length
 
   const now = new Date()
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
@@ -108,6 +111,16 @@ export default function KanbanCard({ task, onClick, onUpdate }: Props) {
     }
   }
 
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    await fetch(`/api/tasks/${task.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ deletedAt: new Date().toISOString() }),
+    })
+    onDelete?.()
+  }
+
   return (
     <div
       className="bg-white rounded-xl shadow-sm border border-border cursor-pointer hover:shadow-md transition-shadow relative overflow-hidden group"
@@ -121,6 +134,27 @@ export default function KanbanCard({ task, onClick, onUpdate }: Props) {
         />
       )}
 
+      {/* 3-dots context menu — top right, visible on hover */}
+      <div
+        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <DropdownMenu>
+          <DropdownMenuTrigger className="p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
+            <MoreVertical className="size-3.5" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent side="bottom" align="end">
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive flex items-center gap-2"
+              onClick={handleDelete}
+            >
+              <Trash2 className="size-3.5" />
+              Видалити
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
       {/* Timer banner */}
       {isTimingThis && (
         <div
@@ -133,8 +167,8 @@ export default function KanbanCard({ task, onClick, onUpdate }: Props) {
       )}
 
       <div className={cn('p-3', priority && 'pl-4')}>
-        {/* Title */}
-        <p className="text-sm font-medium leading-snug mb-2">{task.title}</p>
+        {/* Title — padding-right so it doesn't overlap with 3-dots button */}
+        <p className="text-sm font-medium leading-snug mb-2 pr-5">{task.title}</p>
 
         {/* Labels row */}
         {taskLabels.length > 0 && (
@@ -153,9 +187,17 @@ export default function KanbanCard({ task, onClick, onUpdate }: Props) {
 
         {/* Bottom row — stopPropagation so clicks don't open the modal */}
         <div
-          className="flex items-center gap-1 text-xs text-muted-foreground flex-wrap"
+          className="flex items-center gap-1 text-xs text-muted-foreground"
           onClick={(e) => e.stopPropagation()}
         >
+          {/* Attachment count — leftmost */}
+          {attachCount > 0 && (
+            <span className="flex items-center gap-0.5 px-1 py-0.5">
+              <Paperclip className="size-3 shrink-0" />
+              <span className="text-[10px]">{attachCount}</span>
+            </span>
+          )}
+
           {/* Due date */}
           <Popover>
             <PopoverTrigger
@@ -279,26 +321,28 @@ export default function KanbanCard({ task, onClick, onUpdate }: Props) {
 
           <span className="flex-1" />
 
-          {/* Attachment count */}
-          {attachCount > 0 && (
-            <span className="flex items-center gap-0.5">
-              <Paperclip className="size-3" />
-              {attachCount}
-            </span>
-          )}
-
-          {/* Subtask toggle */}
-          {subtaskCount > 0 && (
+          {/* Subtask section: if has subtasks → toggle dropdown; if none → add subtask icon */}
+          {subtaskCount > 0 ? (
             <button
-              className="flex items-center gap-0.5 hover:text-foreground transition-colors"
+              className="flex items-center gap-1 hover:text-foreground hover:bg-muted rounded px-1 py-0.5 transition-colors"
               onClick={(e) => {
                 e.stopPropagation()
                 setSubtasksOpen(!subtasksOpen)
               }}
             >
-              <span className="text-[10px]">☑</span>
-              <span>0/{subtaskCount}</span>
+              <span className="text-[10px]">{doneSubtasks}/{subtaskCount}</span>
               {subtasksOpen ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
+            </button>
+          ) : (
+            <button
+              className="flex items-center gap-1 rounded px-1 py-0.5 hover:bg-muted hover:text-foreground transition-colors"
+              title="Додати підзадачу"
+              onClick={(e) => {
+                e.stopPropagation()
+                onClick()
+              }}
+            >
+              <ListPlus className="size-3.5" />
             </button>
           )}
         </div>
@@ -318,13 +362,35 @@ export default function KanbanCard({ task, onClick, onUpdate }: Props) {
                   setOpenTaskId(st.id)
                 }}
               >
-                <span className="w-3 h-3 border border-border rounded-sm shrink-0" />
-                <span className="truncate">{st.title}</span>
+                <span
+                  className={cn(
+                    'w-3 h-3 border rounded-sm shrink-0',
+                    st.status?.isDone ? 'bg-primary border-primary' : 'border-border'
+                  )}
+                />
+                <span className={cn('truncate', st.status?.isDone && 'line-through opacity-60')}>
+                  {st.title}
+                </span>
               </button>
             ))}
           </div>
         )}
       </div>
+
+      {/* Progress bar at bottom — only if task has subtasks */}
+      {subtaskCount > 0 && subtasks.length > 0 && (
+        <div className="flex gap-px overflow-hidden rounded-b-xl">
+          {subtasks.map((st) => (
+            <div
+              key={st.id}
+              className="h-1 flex-1 transition-colors duration-300"
+              style={{
+                backgroundColor: st.status?.isDone ? '#6366f1' : '#e2e8f0',
+              }}
+            />
+          ))}
+        </div>
+      )}
     </div>
   )
 }

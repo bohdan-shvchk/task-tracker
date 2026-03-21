@@ -71,6 +71,7 @@ model Task {
   timeLogs    TimeLog[]
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
+  deletedAt   DateTime?
 }
 
 model TaskLabel {

@@ -26,6 +26,7 @@ interface Props {
   onRenameStatus: (statusId: string, name: string) => void
   onChangeStatusColor: (statusId: string, color: string) => void
   onUpdateTask?: (taskId: string, updates: Partial<Task>) => void
+  onDeleteTask?: (taskId: string) => void
 }
 
 export default function KanbanColumn({
@@ -37,6 +38,7 @@ export default function KanbanColumn({
   onRenameStatus,
   onChangeStatusColor,
   onUpdateTask,
+  onDeleteTask,
 }: Props) {
   const [renaming, setRenaming] = useState(false)
   const [newName, setNewName] = useState(status.name)
@@ -148,7 +150,7 @@ export default function KanbanColumn({
       >
         <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
           {tasks.map((task) => (
-            <SortableKanbanCard key={task.id} task={task} onClick={() => onTaskClick(task.id)} onUpdate={(updates) => onUpdateTask?.(task.id, updates)} />
+            <SortableKanbanCard key={task.id} task={task} onClick={() => onTaskClick(task.id)} onUpdate={(updates) => onUpdateTask?.(task.id, updates)} onDelete={() => onDeleteTask?.(task.id)} />
           ))}
         </SortableContext>
 

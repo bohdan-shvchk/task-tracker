@@ -12,13 +12,17 @@ export async function GET(request: NextRequest) {
         ...(projectId && { projectId }),
         ...(statusId && { statusId }),
         parentId: null,
+        deletedAt: null,
       },
       include: {
         status: true,
         project: true,
         labels: { include: { label: true } },
         tags: { include: { tag: true } },
-        timeLogs: true,
+        subtasks: {
+          include: { status: true },
+          orderBy: { order: 'asc' },
+        },
         _count: {
           select: { subtasks: true, attachments: true },
         },
@@ -85,7 +89,10 @@ export async function POST(request: NextRequest) {
         project: true,
         labels: { include: { label: true } },
         tags: { include: { tag: true } },
-        timeLogs: true,
+        subtasks: {
+          include: { status: true },
+          orderBy: { order: 'asc' },
+        },
         _count: {
           select: { subtasks: true, attachments: true },
         },

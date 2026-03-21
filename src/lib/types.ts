@@ -39,6 +39,7 @@ export interface Task {
   _count?: { subtasks: number; attachments: number }
   createdAt: string
   updatedAt: string
+  deletedAt?: string
 }
 
 export interface Label {

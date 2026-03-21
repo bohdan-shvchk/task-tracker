@@ -2,10 +2,11 @@
 
 import { useEffect, useState, use } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Pencil, Check, X } from 'lucide-react'
+import { ArrowLeft, Pencil, Check, X, Trash2 } from 'lucide-react'
 import Sidebar from '@/components/layout/Sidebar'
 import KanbanBoard from '@/components/kanban/KanbanBoard'
 import TaskModal from '@/components/task/TaskModal'
+import TrashModal from '@/components/task/TrashModal'
 import { useAppStore } from '@/store/app-store'
 import { Project, Task } from '@/lib/types'
 import { ColorPalette } from '@/components/ui/color-palette'
@@ -25,6 +26,7 @@ export default function ProjectPage({ params }: Props) {
   const [editingName, setEditingName] = useState(false)
   const [nameInput, setNameInput] = useState('')
   const [colorPickerOpen, setColorPickerOpen] = useState(false)
+  const [trashOpen, setTrashOpen] = useState(false)
 
   const fetchProject = async () => {
     try {
@@ -188,6 +190,13 @@ export default function ProjectPage({ params }: Props) {
             </div>
           )}
           <span className="ml-2 text-sm text-muted-foreground">{tasks.length} завдань</span>
+          <button
+            onClick={() => setTrashOpen(true)}
+            className="ml-auto text-muted-foreground hover:text-foreground transition-colors p-1.5 rounded-lg hover:bg-muted"
+            title="Кошик"
+          >
+            <Trash2 className="size-4" />
+          </button>
         </div>
 
         <div className="flex-1 overflow-auto px-6 py-5">
@@ -208,6 +217,12 @@ export default function ProjectPage({ params }: Props) {
           onClose={() => { setOpenTaskId(null); handleRefresh() }}
         />
       )}
+      <TrashModal
+        projectId={id}
+        open={trashOpen}
+        onClose={() => setTrashOpen(false)}
+        onRestore={handleRefresh}
+      />
     </div>
   )
 }
