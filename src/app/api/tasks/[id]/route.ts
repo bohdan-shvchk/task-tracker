@@ -52,6 +52,14 @@ export async function PATCH(
     const body = await request.json();
     const { title, description, priority, deadline, statusId, order, deletedAt } = body;
 
+    // Cascade deletedAt to subtasks (soft-delete or restore together)
+    if (deletedAt !== undefined) {
+      await prisma.task.updateMany({
+        where: { parentId: id },
+        data: { deletedAt: deletedAt ? new Date(deletedAt) : null },
+      })
+    }
+
     const task = await prisma.task.update({
       where: { id },
       data: {

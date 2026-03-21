@@ -16,6 +16,7 @@ import Sidebar from '@/components/layout/Sidebar'
 import { useAppStore } from '@/store/app-store'
 import { Project } from '@/lib/types'
 import { formatDuration } from '@/lib/format-time'
+import TaskModal from '@/components/task/TaskModal'
 
 interface AnalyticsEntry {
   taskId: string
@@ -30,10 +31,42 @@ interface AnalyticsData {
   entries: AnalyticsEntry[]
 }
 
+interface SubtaskStats {
+  totalTasks: number
+  completedTasks: number
+  totalSubtasks: number
+  completedSubtasks: number
+  byProject: {
+    projectId: string
+    projectName: string
+    projectColor: string
+    totalTasks: number
+    completedTasks: number
+    totalSubtasks: number
+    completedSubtasks: number
+  }[]
+}
+
+interface StatCardProps {
+  label: string
+  value: number
+  color?: string
+}
+
+function StatCard({ label, value, color }: StatCardProps) {
+  return (
+    <div className="bg-white border border-border rounded-xl p-4 flex flex-col gap-1">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className={`text-2xl font-bold tabular-nums ${color ?? 'text-foreground'}`}>{value}</p>
+    </div>
+  )
+}
+
 export default function AnalyticsPage() {
-  const { setProjects } = useAppStore()
+  const { setProjects, openTaskId, setOpenTaskId } = useAppStore()
   const [data, setData] = useState<AnalyticsData | null>(null)
   const [loading, setLoading] = useState(false)
+  const [subtaskStats, setSubtaskStats] = useState<SubtaskStats | null>(null)
   const [startDate, setStartDate] = useState(
     format(startOfMonth(new Date()), 'yyyy-MM-dd')
   )
@@ -45,6 +78,13 @@ export default function AnalyticsPage() {
       .then((projs: Project[]) => setProjects(projs))
       .catch(console.error)
   }, [setProjects])
+
+  useEffect(() => {
+    fetch('/api/analytics/subtasks')
+      .then((r) => r.json())
+      .then((json: SubtaskStats) => setSubtaskStats(json))
+      .catch(console.error)
+  }, [])
 
   const fetchAnalytics = async () => {
     setLoading(true)
@@ -109,6 +149,68 @@ export default function AnalyticsPage() {
 
       <main className="flex-1 overflow-y-auto px-6 py-6">
         <h1 className="text-xl font-bold mb-6">Аналітика</h1>
+
+        {/* Subtask stats cards */}
+        {subtaskStats && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+            <StatCard label="Задач всього" value={subtaskStats.totalTasks} />
+            <StatCard label="Задач виконано" value={subtaskStats.completedTasks} color="text-green-600" />
+            <StatCard label="Підзадач всього" value={subtaskStats.totalSubtasks} />
+            <StatCard label="Підзадач виконано" value={subtaskStats.completedSubtasks} color="text-green-600" />
+          </div>
+        )}
+
+        {/* By-project completion table */}
+        {subtaskStats && subtaskStats.byProject.length > 0 && (
+          <div className="bg-white border border-border rounded-xl overflow-hidden mb-6">
+            <p className="text-sm font-semibold px-4 py-3 border-b border-border">Прогрес по проєктах</p>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Проєкт</th>
+                  <th className="text-center px-4 py-2.5 font-medium text-muted-foreground">Задачі</th>
+                  <th className="text-center px-4 py-2.5 font-medium text-muted-foreground">Підзадачі</th>
+                  <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Прогрес</th>
+                </tr>
+              </thead>
+              <tbody>
+                {subtaskStats.byProject.map((p) => {
+                  const total = p.totalTasks + p.totalSubtasks
+                  const completed = p.completedTasks + p.completedSubtasks
+                  const percent = total > 0 ? Math.round((completed / total) * 100) : 0
+                  return (
+                    <tr key={p.projectId} className="border-b border-border last:border-0 hover:bg-muted/30">
+                      <td className="px-4 py-2.5 font-medium flex items-center gap-2">
+                        <span
+                          className="w-2.5 h-2.5 rounded-full shrink-0 inline-block"
+                          style={{ backgroundColor: p.projectColor }}
+                        />
+                        {p.projectName}
+                      </td>
+                      <td className="px-4 py-2.5 text-center text-muted-foreground">
+                        {p.completedTasks}/{p.totalTasks}
+                      </td>
+                      <td className="px-4 py-2.5 text-center text-muted-foreground">
+                        {p.completedSubtasks}/{p.totalSubtasks}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 bg-muted rounded-full h-1.5 overflow-hidden">
+                            <div
+                              className="h-full bg-primary rounded-full transition-all"
+                              style={{ width: `${percent}%` }}
+                            />
+                          </div>
+                          <span className="text-xs text-muted-foreground w-8 text-right">{percent}%</span>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
 
         {/* Quick filters */}
         <div className="flex gap-2 mb-5 flex-wrap">
@@ -191,7 +293,7 @@ export default function AnalyticsPage() {
               </div>
             )}
 
-            {/* Table */}
+            {/* Time-log table */}
             {(data?.entries ?? []).length > 0 ? (
               <div className="bg-white border border-border rounded-xl overflow-hidden">
                 <table className="w-full text-sm">
@@ -213,7 +315,11 @@ export default function AnalyticsPage() {
                             ? ((entry.totalSeconds / totalSeconds) * 100).toFixed(1)
                             : '0'
                         return (
-                          <tr key={entry.taskId} className="border-b border-border last:border-0 hover:bg-muted/30">
+                          <tr
+                            key={entry.taskId}
+                            className="border-b border-border last:border-0 hover:bg-muted/50 cursor-pointer"
+                            onClick={() => setOpenTaskId(entry.taskId)}
+                          >
                             <td className="px-4 py-2.5 font-medium">{entry.taskTitle}</td>
                             <td className="px-4 py-2.5 text-muted-foreground">{entry.projectName}</td>
                             <td className="px-4 py-2.5 text-right font-mono">
@@ -232,6 +338,14 @@ export default function AnalyticsPage() {
           </>
         )}
       </main>
+
+      {/* TaskModal */}
+      {openTaskId && (
+        <TaskModal
+          taskId={openTaskId}
+          onClose={() => setOpenTaskId(null)}
+        />
+      )}
     </div>
   )
 }
