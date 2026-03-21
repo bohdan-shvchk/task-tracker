@@ -8,9 +8,10 @@ import KanbanCard from './KanbanCard'
 interface Props {
   task: Task
   onClick: () => void
+  onUpdate?: (updates: Partial<Task>) => void
 }
 
-export default function SortableKanbanCard({ task, onClick }: Props) {
+export default function SortableKanbanCard({ task, onClick, onUpdate }: Props) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.id,
     data: { type: 'card' },
@@ -24,7 +25,7 @@ export default function SortableKanbanCard({ task, onClick }: Props) {
 
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <KanbanCard task={task} onClick={onClick} />
+      <KanbanCard task={task} onClick={onClick} onUpdate={onUpdate} />
     </div>
   )
 }
