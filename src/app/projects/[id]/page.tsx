@@ -18,11 +18,10 @@ interface Props {
 export default function ProjectPage({ params }: Props) {
   const { id } = use(params)
   const router = useRouter()
-  const { setProjects } = useAppStore()
+  const { setProjects, openTaskId, setOpenTaskId } = useAppStore()
   const [project, setProject] = useState<Project | null>(null)
   const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
-  const [openTaskId, setOpenTaskId] = useState<string | null>(null)
   const [editingName, setEditingName] = useState(false)
   const [nameInput, setNameInput] = useState('')
   const [colorPickerOpen, setColorPickerOpen] = useState(false)
