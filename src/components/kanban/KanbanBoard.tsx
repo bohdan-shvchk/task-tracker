@@ -293,7 +293,7 @@ export default function KanbanBoard({ statuses, tasks, projectId, onTaskClick, o
           ))}
 
           {/* Add column */}
-          <div className="w-72 shrink-0 mt-8 h-fit">
+          <div className="shrink-0 mt-8 h-fit">
             {addingStatus ? (
               <div className="flex flex-col gap-2 p-3 border-2 border-border rounded-xl bg-background">
                 <input
@@ -315,10 +315,12 @@ export default function KanbanBoard({ statuses, tasks, projectId, onTaskClick, o
             ) : (
               <button
                 onClick={() => setAddingStatus(true)}
-                className="w-full flex items-center gap-2 text-sm text-muted-foreground border-2 border-dashed border-border rounded-xl px-4 py-3 hover:border-foreground/30 hover:text-foreground transition-colors"
+                className="group flex items-center gap-2 text-sm text-muted-foreground border-2 border-dashed border-border rounded-xl px-3 py-2.5 hover:border-foreground/30 hover:text-foreground transition-all w-fit"
               >
-                <Plus className="size-4" />
-                Додати колонку
+                <Plus className="size-4 shrink-0" />
+                <span className="max-w-0 overflow-hidden whitespace-nowrap group-hover:max-w-[120px] transition-all duration-200 ease-in-out">
+                  Додати статус
+                </span>
               </button>
             )}
           </div>
