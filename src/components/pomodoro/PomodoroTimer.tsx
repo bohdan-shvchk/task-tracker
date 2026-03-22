@@ -128,15 +128,13 @@ export default function PomodoroTimer({ projectId, tasks }: Props) {
     } catch { /* silent */ }
   }
 
-  // ── Main tick loop ─────────────────────────────────────────────────────────
+  // ── Main tick loop (один інтервал на весь lifecycle компонента) ───────────
   useEffect(() => {
-    if (!store.isRunning) {
-      if (intervalRef.current) clearInterval(intervalRef.current)
-      return
-    }
-
-    intervalRef.current = setInterval(() => {
+    const interval = setInterval(() => {
       const s = usePomodoroStore.getState()
+
+      // Якщо на паузі — нічого не робимо
+      if (!s.isRunning) return
 
       if (s.secondsLeft <= 0) {
         if (s.mode === 'work') {
@@ -153,17 +151,17 @@ export default function PomodoroTimer({ projectId, tasks }: Props) {
 
       const next = s.secondsLeft - 1
       if (s.mode === 'work') {
-        if (next === 5 * 60)            playSound(s.soundType, 'warning')
-        if (next === 30)                playSound(s.soundType, 'urgent')
-        if (next <= 5 && next > 0)      playSound(s.soundType, 'tick')
+        if (next === 5 * 60)        playSound(s.soundType, 'warning')
+        if (next === 30)            playSound(s.soundType, 'urgent')
+        if (next <= 5 && next > 0)  playSound(s.soundType, 'tick')
       }
 
       s.tick()
     }, 1000)
 
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
+    return () => clearInterval(interval)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [store.isRunning])
+  }, []) // запускається один раз при монтуванні
 
   // ── Controls ───────────────────────────────────────────────────────────────
   const handleStart = async () => {
