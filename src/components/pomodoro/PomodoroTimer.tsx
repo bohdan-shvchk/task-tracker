@@ -126,7 +126,7 @@ function StyledSelect<T extends string>({
       </button>
 
       {open && (
-        <div className="absolute top-full left-0 right-0 mt-1 z-[100] bg-popover border border-border rounded-lg shadow-md overflow-hidden">
+        <div className="absolute top-full left-0 right-0 mt-1 z-[100] bg-popover border border-border rounded-lg shadow-md p-2 flex flex-col gap-2">
           {options.map((opt) => {
             const isSelected = opt.value === value
             const Icon = opt.icon
@@ -136,13 +136,13 @@ function StyledSelect<T extends string>({
                 type="button"
                 onClick={() => { onChange(opt.value); setOpen(false) }}
                 className={cn(
-                  'w-full flex items-center gap-2 px-2.5 py-1.5 text-sm text-left transition-colors',
+                  'w-full flex items-center gap-2 p-2 text-sm text-left rounded-[0.25rem] transition-colors',
                   isSelected
                     ? 'bg-primary/10 text-primary'
-                    : 'text-foreground hover:bg-muted'
+                    : 'text-foreground hover:bg-[#E0E8F8] hover:text-[#2A6FF3]'
                 )}
               >
-                {Icon && <Icon className={cn('size-3.5 shrink-0', isSelected ? 'text-primary' : 'text-muted-foreground')} />}
+                {Icon && <Icon className={cn('size-3.5 shrink-0', isSelected ? 'text-primary' : 'opacity-60')} />}
                 <span>{opt.label}</span>
               </button>
             )
