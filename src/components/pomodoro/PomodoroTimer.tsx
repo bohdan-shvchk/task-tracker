@@ -1,9 +1,11 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Play, Pause, SkipForward, RotateCcw, Timer, Settings } from 'lucide-react'
+import {
+  Play, Pause, SkipForward, RotateCcw, Timer, Settings,
+  Target, Coffee, Moon, Bell, Cpu, Music2, VolumeX, ChevronDown, Circle,
+} from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select'
 import { usePomodoroStore, SoundType } from '@/store/pomodoro-store'
 import { useTimerStore } from '@/store/timer-store'
 import { Task } from '@/lib/types'
@@ -68,6 +70,89 @@ function fmt(s: number) {
 
 const DEFAULT_APP_TITLE = 'Task Tracker'
 
+// ─── StyledSelect ─────────────────────────────────────────────────────────────
+
+interface SelectOption<T extends string> {
+  value: T
+  label: string
+  icon?: React.ComponentType<{ className?: string }>
+}
+
+function StyledSelect<T extends string>({
+  value,
+  onChange,
+  options,
+  placeholder,
+  className,
+}: {
+  value: T | null
+  onChange: (v: T | null) => void
+  options: SelectOption<T>[]
+  placeholder?: string
+  className?: string
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  const selected = options.find((o) => o.value === value)
+
+  return (
+    <div ref={ref} className={cn('relative', className)}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between gap-1.5 px-2.5 py-1.5 text-sm border border-border rounded-lg bg-background hover:bg-muted transition-colors"
+      >
+        <span className="flex items-center gap-2 truncate min-w-0">
+          {selected ? (
+            <>
+              {selected.icon && <selected.icon className="size-3.5 shrink-0 text-muted-foreground" />}
+              <span className="truncate">{selected.label}</span>
+            </>
+          ) : (
+            <span className="text-muted-foreground truncate">{placeholder}</span>
+          )}
+        </span>
+        <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
+      </button>
+
+      {open && (
+        <div className="absolute top-full left-0 right-0 mt-1 z-[100] bg-popover border border-border rounded-lg shadow-md overflow-hidden">
+          {options.map((opt) => {
+            const isSelected = opt.value === value
+            const Icon = opt.icon
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => { onChange(opt.value); setOpen(false) }}
+                className={cn(
+                  'w-full flex items-center gap-2 px-2.5 py-1.5 text-sm text-left transition-colors',
+                  isSelected
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-foreground hover:bg-muted'
+                )}
+              >
+                {Icon && <Icon className={cn('size-3.5 shrink-0', isSelected ? 'text-primary' : 'text-muted-foreground')} />}
+                <span>{opt.label}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 interface Props {
@@ -75,11 +160,17 @@ interface Props {
   tasks: Task[]
 }
 
+const SOUND_OPTIONS: SelectOption<SoundType>[] = [
+  { value: 'bell',    label: 'Дзвін',      icon: Bell    },
+  { value: 'digital', label: 'Цифровий',   icon: Cpu     },
+  { value: 'soft',    label: "М'який",     icon: Music2  },
+  { value: 'none',    label: 'Без звуку',  icon: VolumeX },
+]
+
 export default function PomodoroTimer({ projectId, tasks }: Props) {
   const store = usePomodoroStore()
   const timerStore = useTimerStore()
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const [settingsOpen, setSettingsOpen] = useState(false)
+const [settingsOpen, setSettingsOpen] = useState(false)
   const [startMode, setStartMode] = useState<'work' | 'break' | 'long_break'>('work')
 
   // Reset when switching projects
@@ -92,9 +183,9 @@ export default function PomodoroTimer({ projectId, tasks }: Props) {
   useEffect(() => {
     const { mode, isRunning, secondsLeft, activeTaskTitle, isLongBreak } = store
     if (mode !== 'idle' && isRunning) {
-      const emoji = mode === 'break' ? (isLongBreak ? '🛌' : '☕') : '🍅'
+      const prefix = mode === 'break' ? (isLongBreak ? '[Відпочинок]' : '[Перерва]') : '[Фокус]'
       const task = activeTaskTitle ? ` — ${activeTaskTitle}` : ''
-      document.title = `${emoji} ${fmt(secondsLeft)}${task}`
+      document.title = `${prefix} ${fmt(secondsLeft)}${task}`
     } else {
       document.title = DEFAULT_APP_TITLE
     }
@@ -129,12 +220,11 @@ export default function PomodoroTimer({ projectId, tasks }: Props) {
     } catch { /* silent */ }
   }
 
-  // ── Main tick loop (один інтервал на весь lifecycle компонента) ───────────
+  // ── Main tick loop ─────────────────────────────────────────────────────────
   useEffect(() => {
     const interval = setInterval(() => {
       const s = usePomodoroStore.getState()
 
-      // Якщо на паузі — нічого не робимо
       if (!s.isRunning) return
 
       if (s.secondsLeft <= 0) {
@@ -162,7 +252,7 @@ export default function PomodoroTimer({ projectId, tasks }: Props) {
 
     return () => clearInterval(interval)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []) // запускається один раз при монтуванні
+  }, [])
 
   // ── Controls ───────────────────────────────────────────────────────────────
   const handleStart = async () => {
@@ -216,9 +306,17 @@ export default function PomodoroTimer({ projectId, tasks }: Props) {
     ? 'Готово до старту'
     : isWork
     ? `Фокус #${pomodoroCount + 1}`
-    : isLongBreak ? 'Довга перерва 🛌' : 'Перерва ☕'
+    : isLongBreak ? 'Довга перерва' : 'Перерва'
 
   const nextLongBreakIn = longBreakInterval - (pomodoroCount % longBreakInterval)
+
+  const dotCount = Math.min(pomodoroCount % longBreakInterval || longBreakInterval, 4)
+
+  // Task options for StyledSelect
+  const taskOptions: SelectOption<string>[] = [
+    { value: '__none__', label: 'Без задачі' },
+    ...tasks.map((t) => ({ value: t.id, label: t.title || 'Без назви' })),
+  ]
 
   return (
     <Popover>
@@ -242,18 +340,19 @@ export default function PomodoroTimer({ projectId, tasks }: Props) {
         {isIdle ? (
           <div className="flex gap-1 bg-muted rounded-lg p-0.5 mb-3">
             {([
-              { key: 'work',       label: '🍅 Фокус',       active: 'bg-red-100 text-red-700' },
-              { key: 'break',      label: '☕ Перерва',      active: 'bg-green-100 text-green-700' },
-              { key: 'long_break', label: '🛌 Довга',        active: 'bg-blue-100 text-blue-700' },
-            ] as const).map(({ key, label, active }) => (
+              { key: 'work',       label: 'Фокус',   Icon: Target, active: 'bg-red-100 text-red-700' },
+              { key: 'break',      label: 'Перерва', Icon: Coffee, active: 'bg-green-100 text-green-700' },
+              { key: 'long_break', label: 'Довга',   Icon: Moon,   active: 'bg-blue-100 text-blue-700' },
+            ] as const).map(({ key, label, Icon, active }) => (
               <button
                 key={key}
                 onClick={() => setStartMode(key)}
                 className={cn(
-                  'flex-1 text-[11px] font-medium py-1 rounded-md transition-colors',
+                  'flex-1 flex items-center justify-center gap-1 text-[11px] font-medium py-1 rounded-md transition-colors',
                   startMode === key ? active : 'text-muted-foreground hover:text-foreground'
                 )}
               >
+                <Icon className="size-3" />
                 {label}
               </button>
             ))}
@@ -286,8 +385,10 @@ export default function PomodoroTimer({ projectId, tasks }: Props) {
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <span className="text-xl font-mono font-bold leading-none">{fmt(secondsLeft)}</span>
               {pomodoroCount > 0 && (
-                <span className="text-[10px] text-muted-foreground mt-0.5">
-                  {'🍅'.repeat(Math.min(pomodoroCount % longBreakInterval || longBreakInterval, 4))}
+                <span className="flex items-center gap-0.5 mt-1">
+                  {Array.from({ length: dotCount }).map((_, i) => (
+                    <Circle key={i} className="size-1.5 fill-red-400 text-red-400" />
+                  ))}
                 </span>
               )}
             </div>
@@ -303,32 +404,17 @@ export default function PomodoroTimer({ projectId, tasks }: Props) {
         {(!isWork || pomodoroCount === 0) && <div className="mb-3" />}
 
         {/* Task selector */}
-        <Select
-          value={activeTaskId ?? ''}
-          onValueChange={(v) => {
-            if (!v) return store.setTask(null, null)
+        <StyledSelect
+          value={activeTaskId ?? '__none__'}
+          onChange={(v) => {
+            if (!v || v === '__none__') return store.setTask(null, null)
             const t = tasks.find((t) => t.id === v)
             store.setTask(v, t?.title ?? null)
           }}
-        >
-          <SelectTrigger className="w-full text-sm mb-3">
-            {activeTaskId ? (
-              <span className="truncate">
-                {tasks.find((t) => t.id === activeTaskId)?.title || 'Без назви'}
-              </span>
-            ) : (
-              <span className="text-muted-foreground">Оберіть задачу...</span>
-            )}
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="">Без задачі</SelectItem>
-            {tasks.map((t) => (
-              <SelectItem key={t.id} value={t.id}>
-                <span className="truncate max-w-[180px] block">{t.title || 'Без назви'}</span>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          options={taskOptions}
+          placeholder="Оберіть задачу..."
+          className="mb-3"
+        />
 
         {/* Controls */}
         <div className="flex items-center justify-center gap-2 mb-2">
@@ -364,7 +450,7 @@ export default function PomodoroTimer({ projectId, tasks }: Props) {
 
         {isBreak && (
           <p className="text-center text-xs text-muted-foreground mb-2 leading-snug">
-            {isLongBreak ? 'Добре попрацював! Відпочинь 15 хвилин 🛌' : 'Відпочинь! Трекінг задачі на паузі.'}
+            {isLongBreak ? 'Добре попрацював! Відпочинь 15 хвилин.' : 'Відпочинь! Трекінг задачі на паузі.'}
           </p>
         )}
 
@@ -417,17 +503,11 @@ export default function PomodoroTimer({ projectId, tasks }: Props) {
 
             <label className="flex flex-col gap-1 text-xs">
               <span className="text-muted-foreground">Звук сигналу</span>
-              <Select value={soundType} onValueChange={(v) => store.setSettings({ soundType: v as SoundType })}>
-                <SelectTrigger className="w-full text-sm">
-                  <span>{{ bell: '🔔 Дзвін', digital: '📟 Цифровий', soft: '🎵 М\'який', none: '🔇 Без звуку' }[soundType]}</span>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="bell">🔔 Дзвін</SelectItem>
-                  <SelectItem value="digital">📟 Цифровий</SelectItem>
-                  <SelectItem value="soft">🎵 М'який</SelectItem>
-                  <SelectItem value="none">🔇 Без звуку</SelectItem>
-                </SelectContent>
-              </Select>
+              <StyledSelect
+                value={soundType}
+                onChange={(v) => { if (v) store.setSettings({ soundType: v as SoundType }) }}
+                options={SOUND_OPTIONS}
+              />
             </label>
           </div>
         )}
