@@ -223,6 +223,13 @@ export default function KanbanCard({ task, onClick, onUpdate, onDelete }: Props)
           className="flex items-center gap-1 text-xs text-muted-foreground"
           onClick={(e) => e.stopPropagation()}
         >
+          {/* Estimated pomodoros */}
+          {task.estimatedPomodoros != null && task.estimatedPomodoros > 0 && (
+            <span className="flex items-center gap-0.5 px-1 py-0.5">
+              <span className="text-[10px]">🍅 {task.estimatedPomodoros}</span>
+            </span>
+          )}
+
           {/* Attachment count */}
           {attachCount > 0 && (
             <span className="flex items-center gap-0.5 px-1 py-0.5">

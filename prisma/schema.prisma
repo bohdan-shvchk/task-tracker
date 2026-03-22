@@ -68,10 +68,11 @@ model Task {
   tags        TaskTag[]
   attachments Attachment[]
   comments    Comment[]
-  timeLogs    TimeLog[]
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  deletedAt   DateTime?
+  timeLogs           TimeLog[]
+  estimatedPomodoros Int?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  deletedAt          DateTime?
 }
 
 model TaskLabel {

@@ -597,6 +597,30 @@ export default function TaskModal({ taskId, onClose, isSubtask = false, isNew = 
                   </div>
                 </div>
 
+                {/* Estimated Pomodoros */}
+                <div className="flex items-center gap-2 py-2.5 text-sm px-4">
+                  <span className="text-muted-foreground w-28 shrink-0">🍅 Помодоро</span>
+                  <input
+                    type="number"
+                    min={0}
+                    max={99}
+                    placeholder="—"
+                    defaultValue={task.estimatedPomodoros ?? ''}
+                    onBlur={(e) => {
+                      const val = e.target.value === '' ? null : Math.max(0, parseInt(e.target.value))
+                      if (val !== (task.estimatedPomodoros ?? null)) {
+                        updateTask({ estimatedPomodoros: val ?? undefined })
+                      }
+                    }}
+                    className="w-16 border border-input rounded-md px-2 py-1 text-sm bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                  {task.estimatedPomodoros && (
+                    <span className="text-xs text-muted-foreground">
+                      ≈ {Math.round(task.estimatedPomodoros * 25)} хв
+                    </span>
+                  )}
+                </div>
+
                 {/* Description */}
                 <div className="px-4 pb-4 border-t border-border pt-4">
                   <p className="text-sm font-medium mb-2">Опис</p>

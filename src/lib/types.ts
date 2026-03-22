@@ -36,6 +36,7 @@ export interface Task {
   attachments?: Attachment[]
   comments?: Comment[]
   timeLogs?: TimeLog[]
+  estimatedPomodoros?: number
   _count?: { subtasks: number; attachments: number }
   createdAt: string
   updatedAt: string
