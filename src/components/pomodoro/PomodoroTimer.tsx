@@ -1,33 +1,74 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
-import { Play, Pause, SkipForward, RotateCcw, Timer } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Play, Pause, SkipForward, RotateCcw, Timer, Settings } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { usePomodoroStore } from '@/store/pomodoro-store'
+import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select'
+import { usePomodoroStore, SoundType } from '@/store/pomodoro-store'
 import { useTimerStore } from '@/store/timer-store'
 import { Task } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
-function playBeep(frequency: number, duration: number, volume = 0.25) {
+// ─── Audio ───────────────────────────────────────────────────────────────────
+
+function playSound(type: SoundType, variant: 'warning' | 'urgent' | 'tick' | 'end') {
+  if (type === 'none') return
   try {
     const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
     const ctx = new Ctx()
-    const osc = ctx.createOscillator()
     const gain = ctx.createGain()
-    osc.connect(gain)
     gain.connect(ctx.destination)
-    osc.frequency.value = frequency
-    gain.gain.setValueAtTime(volume, ctx.currentTime)
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration / 1000)
+
+    const configs: Record<SoundType, Record<typeof variant, { freq: number; dur: number; vol: number; wave: OscillatorType }>> = {
+      bell: {
+        warning: { freq: 660, dur: 0.4, vol: 0.25, wave: 'sine' },
+        urgent:  { freq: 880, dur: 0.5, vol: 0.3,  wave: 'sine' },
+        tick:    { freq: 1100, dur: 0.1, vol: 0.2, wave: 'sine' },
+        end:     { freq: 784, dur: 0.8, vol: 0.35, wave: 'sine' },
+      },
+      digital: {
+        warning: { freq: 600, dur: 0.3, vol: 0.2, wave: 'square' },
+        urgent:  { freq: 800, dur: 0.4, vol: 0.25, wave: 'square' },
+        tick:    { freq: 900, dur: 0.08, vol: 0.15, wave: 'square' },
+        end:     { freq: 700, dur: 0.6, vol: 0.25, wave: 'square' },
+      },
+      soft: {
+        warning: { freq: 440, dur: 0.6, vol: 0.2, wave: 'sine' },
+        urgent:  { freq: 520, dur: 0.7, vol: 0.22, wave: 'sine' },
+        tick:    { freq: 480, dur: 0.15, vol: 0.15, wave: 'sine' },
+        end:     { freq: 392, dur: 1.0, vol: 0.25, wave: 'sine' },
+      },
+      none: {
+        warning: { freq: 0, dur: 0, vol: 0, wave: 'sine' },
+        urgent:  { freq: 0, dur: 0, vol: 0, wave: 'sine' },
+        tick:    { freq: 0, dur: 0, vol: 0, wave: 'sine' },
+        end:     { freq: 0, dur: 0, vol: 0, wave: 'sine' },
+      },
+    }
+
+    const { freq, dur, vol, wave } = configs[type][variant]
+    if (!freq) return
+
+    const osc = ctx.createOscillator()
+    osc.type = wave
+    osc.frequency.value = freq
+    osc.connect(gain)
+    gain.gain.setValueAtTime(vol, ctx.currentTime)
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur)
     osc.start()
-    osc.stop(ctx.currentTime + duration / 1000)
-  } catch { /* ignore if AudioContext not available */ }
+    osc.stop(ctx.currentTime + dur)
+  } catch { /* silent */ }
 }
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function fmt(s: number) {
   return `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`
 }
+
+const DEFAULT_APP_TITLE = 'Task Tracker'
+
+// ─── Component ───────────────────────────────────────────────────────────────
 
 interface Props {
   projectId: string
@@ -38,16 +79,28 @@ export default function PomodoroTimer({ projectId, tasks }: Props) {
   const store = usePomodoroStore()
   const timerStore = useTimerStore()
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   // Reset when switching projects
   useEffect(() => {
-    if (store.projectId && store.projectId !== projectId) {
-      store.reset()
-    }
+    if (store.projectId && store.projectId !== projectId) store.reset()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId])
 
-  // ─── Start/stop task timer helpers ───────────────────────────────────────
+  // ── Tab title ──────────────────────────────────────────────────────────────
+  useEffect(() => {
+    const { mode, isRunning, secondsLeft, activeTaskTitle, isLongBreak } = store
+    if (mode !== 'idle' && isRunning) {
+      const emoji = mode === 'break' ? (isLongBreak ? '🛌' : '☕') : '🍅'
+      const task = activeTaskTitle ? ` — ${activeTaskTitle}` : ''
+      document.title = `${emoji} ${fmt(secondsLeft)}${task}`
+    } else {
+      document.title = DEFAULT_APP_TITLE
+    }
+    return () => { document.title = DEFAULT_APP_TITLE }
+  }, [store.secondsLeft, store.isRunning, store.mode, store.activeTaskTitle, store.isLongBreak]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Task timer API helpers ─────────────────────────────────────────────────
   const stopTaskTimer = async (taskId: string) => {
     try {
       await fetch('/api/timer/stop', {
@@ -75,7 +128,7 @@ export default function PomodoroTimer({ projectId, tasks }: Props) {
     } catch { /* silent */ }
   }
 
-  // ─── Main tick loop ───────────────────────────────────────────────────────
+  // ── Main tick loop ─────────────────────────────────────────────────────────
   useEffect(() => {
     if (!store.isRunning) {
       if (intervalRef.current) clearInterval(intervalRef.current)
@@ -85,27 +138,24 @@ export default function PomodoroTimer({ projectId, tasks }: Props) {
     intervalRef.current = setInterval(() => {
       const s = usePomodoroStore.getState()
 
-      // ── Time's up ──
       if (s.secondsLeft <= 0) {
         if (s.mode === 'work') {
-          s.switchToBreak()          // resets secondsLeft to breakDuration
-          playBeep(523, 700)
+          s.switchToBreak()
+          playSound(s.soundType, 'end')
           if (s.activeTaskId) stopTaskTimer(s.activeTaskId)
         } else if (s.mode === 'break') {
-          s.switchToWork()           // resets secondsLeft to workDuration
-          playBeep(440, 500)
+          s.switchToWork()
+          playSound(s.soundType, 'end')
           if (s.activeTaskId) startTaskTimer(s.activeTaskId)
         }
         return
       }
 
       const next = s.secondsLeft - 1
-
-      // ── Warnings (work mode only) ──
       if (s.mode === 'work') {
-        if (next === 5 * 60)  playBeep(600, 350)          // 5 min left
-        if (next === 30)      playBeep(800, 450)           // 30 sec left
-        if (next <= 5 && next > 0) playBeep(1100, 120)    // last 5 sec
+        if (next === 5 * 60)            playSound(s.soundType, 'warning')
+        if (next === 30)                playSound(s.soundType, 'urgent')
+        if (next <= 5 && next > 0)      playSound(s.soundType, 'tick')
       }
 
       s.tick()
@@ -115,7 +165,7 @@ export default function PomodoroTimer({ projectId, tasks }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [store.isRunning])
 
-  // ─── Controls ────────────────────────────────────────────────────────────
+  // ── Controls ───────────────────────────────────────────────────────────────
   const handleStart = async () => {
     if (store.mode === 'idle') {
       store.startWork(projectId)
@@ -143,33 +193,40 @@ export default function PomodoroTimer({ projectId, tasks }: Props) {
     store.reset()
   }
 
-  // ─── Derived UI values ────────────────────────────────────────────────────
-  const { mode, secondsLeft, isRunning, activeTaskId, pomodoroCount, workDuration, breakDuration } = store
+  // ── Derived values ─────────────────────────────────────────────────────────
+  const { mode, secondsLeft, isRunning, activeTaskId, pomodoroCount,
+          workDuration, breakDuration, longBreakDuration, longBreakInterval,
+          soundType, isLongBreak } = store
   const isIdle = mode === 'idle'
   const isWork = mode === 'work'
   const isBreak = mode === 'break'
 
-  const total = isWork ? workDuration : isBreak ? breakDuration : workDuration
+  const total = isWork ? workDuration : isLongBreak ? longBreakDuration : breakDuration
   const progress = isIdle ? 0 : 1 - secondsLeft / total
 
   const R = 36
   const circ = 2 * Math.PI * R
   const dash = circ * (1 - progress)
+  const accentColor = isBreak ? (isLongBreak ? '#3b82f6' : '#22c55e') : '#ef4444'
 
-  const accentColor = isBreak ? '#22c55e' : '#ef4444'
+  const modeLabel = isIdle
+    ? 'Готово до старту'
+    : isWork
+    ? `Фокус #${pomodoroCount + 1}`
+    : isLongBreak ? 'Довга перерва 🛌' : 'Перерва ☕'
+
+  const nextLongBreakIn = longBreakInterval - (pomodoroCount % longBreakInterval)
 
   return (
     <Popover>
       <PopoverTrigger
         className={cn(
           'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors',
-          isWork && isRunning
-            ? 'bg-red-50 border-red-200 text-red-700'
-            : isBreak
-            ? 'bg-green-50 border-green-200 text-green-700'
-            : isWork && !isRunning
-            ? 'bg-muted border-border text-foreground'
-            : 'bg-muted border-border text-muted-foreground hover:text-foreground'
+          isWork && isRunning  ? 'bg-red-50 border-red-200 text-red-700' :
+          isBreak && isLongBreak ? 'bg-blue-50 border-blue-200 text-blue-700' :
+          isBreak              ? 'bg-green-50 border-green-200 text-green-700' :
+          isWork && !isRunning ? 'bg-muted border-border text-foreground' :
+                                 'bg-muted border-border text-muted-foreground hover:text-foreground'
         )}
       >
         <Timer className="size-3.5 shrink-0" />
@@ -177,115 +234,179 @@ export default function PomodoroTimer({ projectId, tasks }: Props) {
       </PopoverTrigger>
 
       <PopoverContent align="end" className="w-64 p-4">
+
         {/* Mode badge */}
         <div className="flex justify-center mb-3">
-          <span
-            className={cn(
-              'text-xs font-semibold uppercase tracking-wide px-2.5 py-0.5 rounded-full',
-              isWork ? 'bg-red-100 text-red-700' :
-              isBreak ? 'bg-green-100 text-green-700' :
-              'bg-muted text-muted-foreground'
-            )}
-          >
-            {isIdle ? 'Готово до старту' : isWork ? `Фокус #${pomodoroCount + 1}` : 'Перерва ☕'}
+          <span className={cn(
+            'text-xs font-semibold uppercase tracking-wide px-2.5 py-0.5 rounded-full',
+            isWork        ? 'bg-red-100 text-red-700' :
+            isLongBreak   ? 'bg-blue-100 text-blue-700' :
+            isBreak       ? 'bg-green-100 text-green-700' :
+                            'bg-muted text-muted-foreground'
+          )}>
+            {modeLabel}
           </span>
         </div>
 
         {/* Circle timer */}
-        <div className="flex justify-center mb-4">
+        <div className="flex justify-center mb-1">
           <div className="relative w-24 h-24">
             <svg viewBox="0 0 84 84" className="w-full h-full -rotate-90">
               <circle cx="42" cy="42" r={R} fill="none" strokeWidth="5"
-                className="text-muted/50" stroke="currentColor" />
-              <circle
-                cx="42" cy="42" r={R} fill="none" strokeWidth="5"
+                className="text-muted/40" stroke="currentColor" />
+              <circle cx="42" cy="42" r={R} fill="none" strokeWidth="5"
                 stroke={accentColor} strokeLinecap="round"
-                strokeDasharray={circ}
-                strokeDashoffset={dash}
+                strokeDasharray={circ} strokeDashoffset={dash}
                 className="transition-all duration-700"
               />
             </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-0">
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
               <span className="text-xl font-mono font-bold leading-none">{fmt(secondsLeft)}</span>
               {pomodoroCount > 0 && (
                 <span className="text-[10px] text-muted-foreground mt-0.5">
-                  {'🍅'.repeat(Math.min(pomodoroCount, 4))}
+                  {'🍅'.repeat(Math.min(pomodoroCount % longBreakInterval || longBreakInterval, 4))}
                 </span>
               )}
             </div>
           </div>
         </div>
 
+        {/* Next long break hint */}
+        {isWork && pomodoroCount > 0 && (
+          <p className="text-center text-[10px] text-muted-foreground mb-3">
+            Довга перерва через {nextLongBreakIn} {nextLongBreakIn === 1 ? 'помодоро' : 'помодоро'}
+          </p>
+        )}
+        {(!isWork || pomodoroCount === 0) && <div className="mb-3" />}
+
         {/* Task selector */}
         <Select
-          value={activeTaskId ?? '__none__'}
+          value={activeTaskId ?? ''}
           onValueChange={(v) => {
-            if (v === '__none__') return store.setTask(null, null)
+            if (!v) return store.setTask(null, null)
             const t = tasks.find((t) => t.id === v)
             store.setTask(v, t?.title ?? null)
           }}
         >
           <SelectTrigger className="w-full text-sm mb-3">
-            <SelectValue placeholder="Оберіть задачу..." />
+            {activeTaskId ? (
+              <span className="truncate">
+                {tasks.find((t) => t.id === activeTaskId)?.title || 'Без назви'}
+              </span>
+            ) : (
+              <span className="text-muted-foreground">Оберіть задачу...</span>
+            )}
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="__none__">Без задачі</SelectItem>
+            <SelectItem value="">Без задачі</SelectItem>
             {tasks.map((t) => (
               <SelectItem key={t.id} value={t.id}>
-                <span className="truncate max-w-[180px] block">
-                  {t.title || 'Без назви'}
-                </span>
+                <span className="truncate max-w-[180px] block">{t.title || 'Без назви'}</span>
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
 
         {/* Controls */}
-        <div className="flex items-center justify-center gap-2">
-          <button
-            onClick={handleReset}
-            title="Скинути"
-            className="w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-          >
+        <div className="flex items-center justify-center gap-2 mb-2">
+          <button onClick={handleReset} title="Скинути"
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
             <RotateCcw className="size-4" />
           </button>
 
           {isRunning ? (
-            <button
-              onClick={handlePause}
-              className="w-12 h-12 flex items-center justify-center rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm"
-            >
+            <button onClick={handlePause}
+              className="w-12 h-12 flex items-center justify-center rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm">
               <Pause className="size-5" />
             </button>
           ) : (
-            <button
-              onClick={handleStart}
-              className="w-12 h-12 flex items-center justify-center rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm"
-            >
+            <button onClick={handleStart}
+              className="w-12 h-12 flex items-center justify-center rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm">
               <Play className="size-5 ml-0.5" />
             </button>
           )}
 
           <button
             onClick={isBreak ? handleSkipBreak : undefined}
-            title={isBreak ? 'Пропустити перерву' : undefined}
             disabled={!isBreak}
+            title={isBreak ? 'Пропустити перерву' : undefined}
             className={cn(
               'w-8 h-8 flex items-center justify-center rounded-lg transition-colors',
-              isBreak
-                ? 'text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer'
-                : 'text-muted/30 cursor-default'
-            )}
-          >
+              isBreak ? 'text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer'
+                      : 'text-muted/30 cursor-default'
+            )}>
             <SkipForward className="size-4" />
           </button>
         </div>
 
-        {/* Break hint */}
         {isBreak && (
-          <p className="text-center text-xs text-muted-foreground mt-3 leading-snug">
-            Відпочинь! Трекінг задачі<br />поставлено на паузу.
+          <p className="text-center text-xs text-muted-foreground mb-2 leading-snug">
+            {isLongBreak ? 'Добре попрацював! Відпочинь 15 хвилин 🛌' : 'Відпочинь! Трекінг задачі на паузі.'}
           </p>
+        )}
+
+        {/* Settings toggle */}
+        <button
+          onClick={() => setSettingsOpen((v) => !v)}
+          className="w-full flex items-center justify-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors mt-1"
+        >
+          <Settings className="size-3" />
+          {settingsOpen ? 'Сховати налаштування' : 'Налаштування'}
+        </button>
+
+        {/* Settings panel */}
+        {settingsOpen && (
+          <div className="mt-3 pt-3 border-t border-border flex flex-col gap-2">
+            <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
+              <label className="flex flex-col gap-1">
+                <span className="text-muted-foreground">Фокус (хв)</span>
+                <input type="number" min={1} max={90}
+                  defaultValue={workDuration / 60}
+                  onChange={(e) => store.setSettings({ workDuration: Math.max(1, +e.target.value) * 60 })}
+                  className="w-full border border-border rounded-md px-2 py-1 text-sm bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-muted-foreground">Перерва (хв)</span>
+                <input type="number" min={1} max={30}
+                  defaultValue={breakDuration / 60}
+                  onChange={(e) => store.setSettings({ breakDuration: Math.max(1, +e.target.value) * 60 })}
+                  className="w-full border border-border rounded-md px-2 py-1 text-sm bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-muted-foreground">Довга перерва (хв)</span>
+                <input type="number" min={1} max={60}
+                  defaultValue={longBreakDuration / 60}
+                  onChange={(e) => store.setSettings({ longBreakDuration: Math.max(1, +e.target.value) * 60 })}
+                  className="w-full border border-border rounded-md px-2 py-1 text-sm bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-muted-foreground">Довга через (шт)</span>
+                <input type="number" min={1} max={10}
+                  defaultValue={longBreakInterval}
+                  onChange={(e) => store.setSettings({ longBreakInterval: Math.max(1, +e.target.value) })}
+                  className="w-full border border-border rounded-md px-2 py-1 text-sm bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+                />
+              </label>
+            </div>
+
+            <label className="flex flex-col gap-1 text-xs">
+              <span className="text-muted-foreground">Звук сигналу</span>
+              <Select value={soundType} onValueChange={(v) => store.setSettings({ soundType: v as SoundType })}>
+                <SelectTrigger className="w-full text-sm">
+                  <span>{{ bell: '🔔 Дзвін', digital: '📟 Цифровий', soft: '🎵 М\'який', none: '🔇 Без звуку' }[soundType]}</span>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="bell">🔔 Дзвін</SelectItem>
+                  <SelectItem value="digital">📟 Цифровий</SelectItem>
+                  <SelectItem value="soft">🎵 М'який</SelectItem>
+                  <SelectItem value="none">🔇 Без звуку</SelectItem>
+                </SelectContent>
+              </Select>
+            </label>
+          </div>
         )}
       </PopoverContent>
     </Popover>
