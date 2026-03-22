@@ -138,12 +138,12 @@ function StyledSelect<T extends string>({
                 className={cn(
                   'w-full flex items-center gap-2 p-2 text-sm text-left rounded-[0.25rem] transition-colors',
                   isSelected
-                    ? 'bg-primary/10 text-primary'
+                    ? 'bg-[#E0E8F8] text-[#2A6FF3]'
                     : 'text-foreground hover:bg-[#E0E8F8] hover:text-[#2A6FF3]'
                 )}
               >
-                {Icon && <Icon className={cn('size-3.5 shrink-0', isSelected ? 'text-primary' : 'opacity-60')} />}
-                <span>{opt.label}</span>
+                {Icon && <Icon className="size-3.5 shrink-0 opacity-70" />}
+                <span className="truncate">{opt.label}</span>
               </button>
             )
           })}
