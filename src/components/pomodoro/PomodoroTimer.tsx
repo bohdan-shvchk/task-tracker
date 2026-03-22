@@ -80,6 +80,7 @@ export default function PomodoroTimer({ projectId, tasks }: Props) {
   const timerStore = useTimerStore()
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [startMode, setStartMode] = useState<'work' | 'break' | 'long_break'>('work')
 
   // Reset when switching projects
   useEffect(() => {
@@ -166,8 +167,12 @@ export default function PomodoroTimer({ projectId, tasks }: Props) {
   // ── Controls ───────────────────────────────────────────────────────────────
   const handleStart = async () => {
     if (store.mode === 'idle') {
-      store.startWork(projectId)
-      if (store.activeTaskId) await startTaskTimer(store.activeTaskId)
+      if (startMode === 'work') {
+        store.startWork(projectId)
+        if (store.activeTaskId) await startTaskTimer(store.activeTaskId)
+      } else {
+        store.startBreak(projectId, startMode === 'long_break')
+      }
     } else {
       store.resume()
       if (store.mode === 'work' && store.activeTaskId) await startTaskTimer(store.activeTaskId)
@@ -233,18 +238,38 @@ export default function PomodoroTimer({ projectId, tasks }: Props) {
 
       <PopoverContent align="end" className="w-64 p-4">
 
-        {/* Mode badge */}
-        <div className="flex justify-center mb-3">
-          <span className={cn(
-            'text-xs font-semibold uppercase tracking-wide px-2.5 py-0.5 rounded-full',
-            isWork        ? 'bg-red-100 text-red-700' :
-            isLongBreak   ? 'bg-blue-100 text-blue-700' :
-            isBreak       ? 'bg-green-100 text-green-700' :
-                            'bg-muted text-muted-foreground'
-          )}>
-            {modeLabel}
-          </span>
-        </div>
+        {/* Mode selector (idle) / Mode badge (running) */}
+        {isIdle ? (
+          <div className="flex gap-1 bg-muted rounded-lg p-0.5 mb-3">
+            {([
+              { key: 'work',       label: '🍅 Фокус',       active: 'bg-red-100 text-red-700' },
+              { key: 'break',      label: '☕ Перерва',      active: 'bg-green-100 text-green-700' },
+              { key: 'long_break', label: '🛌 Довга',        active: 'bg-blue-100 text-blue-700' },
+            ] as const).map(({ key, label, active }) => (
+              <button
+                key={key}
+                onClick={() => setStartMode(key)}
+                className={cn(
+                  'flex-1 text-[11px] font-medium py-1 rounded-md transition-colors',
+                  startMode === key ? active : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="flex justify-center mb-3">
+            <span className={cn(
+              'text-xs font-semibold uppercase tracking-wide px-2.5 py-0.5 rounded-full',
+              isWork      ? 'bg-red-100 text-red-700' :
+              isLongBreak ? 'bg-blue-100 text-blue-700' :
+                            'bg-green-100 text-green-700'
+            )}>
+              {modeLabel}
+            </span>
+          </div>
+        )}
 
         {/* Circle timer */}
         <div className="flex justify-center mb-1">

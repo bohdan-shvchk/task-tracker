@@ -26,6 +26,7 @@ interface PomodoroState {
   soundType: SoundType
 
   startWork: (projectId: string) => void
+  startBreak: (projectId: string, long?: boolean) => void
   pause: () => void
   resume: () => void
   skipBreak: () => void
@@ -55,6 +56,9 @@ export const usePomodoroStore = create<PomodoroState>((set, get) => ({
 
   startWork: (projectId) =>
     set((s) => ({ projectId, mode: 'work', secondsLeft: s.workDuration, isRunning: true, isLongBreak: false })),
+
+  startBreak: (projectId, long = false) =>
+    set((s) => ({ projectId, mode: 'break', secondsLeft: long ? s.longBreakDuration : s.breakDuration, isRunning: true, isLongBreak: long })),
 
   pause: () => set({ isRunning: false }),
   resume: () => set({ isRunning: true }),
