@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Paperclip, ChevronDown, ChevronUp, CalendarIcon, Flag, Tag, MoreVertical, Trash2, ListPlus, ExternalLink, Plus, Check } from 'lucide-react'
+import { Paperclip, ChevronDown, ChevronUp, CalendarIcon, Flag, Tag, MoreVertical, Trash2, ListPlus, Plus, Check } from 'lucide-react'
 import { Task, Label } from '@/lib/types'
 import { useTimerStore } from '@/store/timer-store'
 import { formatDuration } from '@/lib/format-time'
@@ -166,13 +166,6 @@ export default function KanbanCard({ task, onClick, onUpdate, onDelete }: Props)
       className="bg-white rounded-xl shadow-sm border border-border cursor-pointer hover:shadow-md transition-shadow relative overflow-hidden group"
       onClick={onClick}
     >
-      {/* Priority indicator on left border */}
-      {priority && (
-        <div
-          className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl"
-          style={{ backgroundColor: PRIORITY_COLORS[priority] }}
-        />
-      )}
 
       {/* 3-dots context menu — top right, visible on hover */}
       <div
@@ -206,7 +199,7 @@ export default function KanbanCard({ task, onClick, onUpdate, onDelete }: Props)
         </div>
       )}
 
-      <div className={cn('p-3', priority && 'pl-4')}>
+      <div className="p-3">
         {/* Title */}
         <p className="text-sm font-medium leading-snug mb-2 pr-5">{task.title}</p>
 
@@ -403,22 +396,14 @@ export default function KanbanCard({ task, onClick, onUpdate, onDelete }: Props)
                 </button>
 
                 {/* Subtask title */}
-                <span
+                <button
                   className={cn(
-                    'flex-1 text-xs truncate text-muted-foreground',
+                    'flex-1 text-xs truncate text-muted-foreground text-left hover:text-foreground transition-colors',
                     st.status?.isDone && 'line-through opacity-50'
                   )}
+                  onClick={() => setOpenTaskId(st.id)}
                 >
                   {st.title}
-                </span>
-
-                {/* Open modal */}
-                <button
-                  className="opacity-0 group-hover/subtask:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
-                  onClick={() => setOpenTaskId(st.id)}
-                  title="Відкрити"
-                >
-                  <ExternalLink className="size-3" />
                 </button>
               </div>
             ))}
@@ -465,7 +450,7 @@ export default function KanbanCard({ task, onClick, onUpdate, onDelete }: Props)
             <div
               key={st.id}
               className="h-1 flex-1 transition-colors duration-300"
-              style={{ backgroundColor: st.status?.isDone ? '#6366f1' : '#e2e8f0' }}
+              style={{ backgroundColor: st.status?.isDone ? '#fad000' : '#e2e8f0' }}
             />
           ))}
         </div>

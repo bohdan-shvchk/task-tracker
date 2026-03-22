@@ -4,11 +4,8 @@ import { Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const PRESET_COLORS = [
-  '#1c1c1e', '#1e3a5f', '#1a3a3a', '#1a3320', '#3d3200', '#3b1f0e',
-  '#6d28d9', '#2563eb', '#0891b2', '#059669', '#ca8a04', '#ea580c',
-  '#dc2626', '#db2777', '#7c3aed', '#92400e', '#4b5563', '#374151',
-  '#f43f5e', '#ef4444', '#f97316', '#eab308', '#22c55e', '#6366f1',
-  '#ec4899', '#a78bfa', '#67e8f9', '#86efac', '#fde047', '#c4b5fd',
+  '#6648F0', '#E93D82', '#3E63DD', '#AB4ABA', '#0491FF', '#A18072',
+  '#12A693', '#8D8D8D', '#30A56C', '#FFC63D', '#F7680A', '#E5484D',
 ]
 
 interface Props {

@@ -5,16 +5,20 @@ interface AppState {
   projects: Project[]
   selectedProjectId: string | null
   openTaskId: string | null
+  trashOpen: boolean
   setProjects: (projects: Project[]) => void
   setSelectedProjectId: (id: string | null) => void
   setOpenTaskId: (id: string | null) => void
+  setTrashOpen: (open: boolean) => void
 }
 
 export const useAppStore = create<AppState>((set) => ({
   projects: [],
   selectedProjectId: null,
   openTaskId: null,
+  trashOpen: false,
   setProjects: (projects) => set({ projects }),
   setSelectedProjectId: (id) => set({ selectedProjectId: id }),
   setOpenTaskId: (id) => set({ openTaskId: id }),
+  setTrashOpen: (open) => set({ trashOpen: open }),
 }))

@@ -1,12 +1,17 @@
 'use client'
 
 import { useEffect, useState, useCallback, useRef } from 'react'
+import dynamic from 'next/dynamic'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
+
+const RichTextEditor = dynamic(() => import('@/components/ui/rich-text-editor'), {
+  ssr: false,
+  loading: () => <div className="h-32 rounded-lg border border-border bg-muted/20 animate-pulse" />,
+})
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { Progress } from '@/components/ui/progress'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
 import {
@@ -34,16 +39,15 @@ interface Props {
   taskId: string
   onClose: () => void
   isSubtask?: boolean
+  isNew?: boolean
 }
 
-export default function TaskModal({ taskId, onClose, isSubtask = false }: Props) {
+export default function TaskModal({ taskId, onClose, isSubtask = false, isNew = false }: Props) {
   const [task, setTask] = useState<Task | null>(null)
   const [loading, setLoading] = useState(true)
   const [statuses, setStatuses] = useState<Status[]>([])
   const [allLabels, setAllLabels] = useState<Label[]>([])
   const [title, setTitle] = useState('')
-  const [description, setDescription] = useState('')
-  const [descDirty, setDescDirty] = useState(false)
   const [newComment, setNewComment] = useState('')
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('')
   const [addingSubtask, setAddingSubtask] = useState(false)
@@ -56,12 +60,12 @@ export default function TaskModal({ taskId, onClose, isSubtask = false }: Props)
   const [editingLabelName, setEditingLabelName] = useState('')
   const [editingLabelColor, setEditingLabelColor] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [pasteUploading, setPasteUploading] = useState(false)
   const [addingManualTime, setAddingManualTime] = useState(false)
   const [manualDate, setManualDate] = useState(format(new Date(), 'yyyy-MM-dd'))
   const [manualStart, setManualStart] = useState('09:00')
   const [manualEnd, setManualEnd] = useState('10:00')
   const [deadlineOpen, setDeadlineOpen] = useState(false)
+  const [confirmCloseOpen, setConfirmCloseOpen] = useState(false)
   const { projects } = useAppStore()
 
   const { isRunning, currentSeconds, activeTimeLog, activeTask, setActiveTimeLog, setActiveTask, setIsRunning, tick, reset } = useTimerStore()
@@ -84,8 +88,6 @@ export default function TaskModal({ taskId, onClose, isSubtask = false }: Props)
         const data: Task = await res.json()
         setTask(data)
         setTitle(data.title)
-        setDescription(data.description ?? '')
-        setDescDirty(false)
         if (data.projectId) {
           const pRes = await fetch(`/api/projects/${data.projectId}`)
           if (pRes.ok) {
@@ -201,23 +203,6 @@ export default function TaskModal({ taskId, onClose, isSubtask = false }: Props)
     } catch (e) { console.error(e) }
   }
 
-  const handleDescriptionPaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
-    const items = Array.from(e.clipboardData.items)
-    const imageItem = items.find((item) => item.type.startsWith('image/'))
-    if (!imageItem) return
-    e.preventDefault()
-    const file = imageItem.getAsFile()
-    if (!file) return
-    setPasteUploading(true)
-    const formData = new FormData()
-    const ext = file.type.split('/')[1] || 'png'
-    formData.append('file', file, `screenshot-${Date.now()}.${ext}`)
-    try {
-      const res = await fetch(`/api/tasks/${taskId}/attachments`, { method: 'POST', body: formData })
-      if (res.ok) fetchTask()
-    } catch (err) { console.error(err) }
-    finally { setPasteUploading(false) }
-  }
 
   const handleCreateLabel = async () => {
     const name = newLabelName.trim()
@@ -351,6 +336,41 @@ export default function TaskModal({ taskId, onClose, isSubtask = false }: Props)
     catch (e) { console.error(e) }
   }
 
+  const handleDeleteTask = async () => {
+    try {
+      await fetch(`/api/tasks/${taskId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deletedAt: new Date().toISOString() }),
+      })
+      onClose()
+    } catch (e) { console.error(e) }
+  }
+
+  const handleClose = async () => {
+    if (!isNew) { onClose(); return }
+    const hasTitle = title.trim().length > 0
+    const hasDesc = (task?.description ?? '').trim().length > 0
+    const hasLabels = (task?.labels?.length ?? 0) > 0
+    const hasContent = hasTitle || hasDesc || hasLabels
+    if (!hasContent) {
+      // Nothing entered — delete silently
+      try { await fetch(`/api/tasks/${taskId}`, { method: 'DELETE' }) } catch (e) { console.error(e) }
+      onClose()
+    } else if (!hasTitle) {
+      // Has content but no title — show confirmation
+      setConfirmCloseOpen(true)
+    } else {
+      onClose()
+    }
+  }
+
+  const handleConfirmDiscard = async () => {
+    try { await fetch(`/api/tasks/${taskId}`, { method: 'DELETE' }) } catch (e) { console.error(e) }
+    setConfirmCloseOpen(false)
+    onClose()
+  }
+
   const totalLoggedSeconds = task?.timeLogs?.filter((tl) => tl.endTime).reduce((sum, tl) => sum + (tl.duration ?? 0), 0) ?? 0
   const doneStatus = statuses.find((s) => s.isDone)
   const isDone = task?.statusId === doneStatus?.id
@@ -362,7 +382,7 @@ export default function TaskModal({ taskId, onClose, isSubtask = false }: Props)
 
   return (
     <>
-      <Dialog open onOpenChange={(open) => { if (!open) onClose() }}>
+      <Dialog open onOpenChange={(open) => { if (!open) handleClose() }}>
         <DialogContent className="!max-w-5xl w-full h-[85vh] p-0 gap-0 overflow-hidden" showCloseButton={false}>
           {loading ? (
             <div className="flex items-center justify-center h-full text-muted-foreground">Завантаження...</div>
@@ -383,7 +403,7 @@ export default function TaskModal({ taskId, onClose, isSubtask = false }: Props)
                     onBlur={handleTitleBlur}
                     placeholder="Назва завдання"
                   />
-                  <button onClick={onClose} className="text-muted-foreground hover:text-foreground ml-2 p-1">
+                  <button onClick={handleClose} className="text-muted-foreground hover:text-foreground ml-2 p-1">
                     <X className="size-4" />
                   </button>
                 </div>
@@ -580,29 +600,11 @@ export default function TaskModal({ taskId, onClose, isSubtask = false }: Props)
                 {/* Description */}
                 <div className="px-4 pb-4 border-t border-border pt-4">
                   <p className="text-sm font-medium mb-2">Опис</p>
-                  <div className="relative">
-                    <Textarea
-                      placeholder="Додайте опис завдання... (Ctrl+V / ⌘V для вставки скріншоту)"
-                      value={description}
-                      onChange={(e) => { setDescription(e.target.value); setDescDirty(true) }}
-                      onPaste={handleDescriptionPaste}
-                      className="min-h-[100px] text-sm resize-none"
-                    />
-                    {pasteUploading && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-md">
-                        <span className="text-xs text-muted-foreground animate-pulse">Завантаження зображення...</span>
-                      </div>
-                    )}
-                  </div>
-                  {descDirty && (
-                    <div className="flex items-center justify-between mt-2">
-                      <span className="text-xs text-amber-600">Незбережені зміни</span>
-                      <div className="flex gap-2">
-                        <Button size="sm" variant="outline" onClick={() => { setDescription(task.description ?? ''); setDescDirty(false) }}>Скасувати</Button>
-                        <Button size="sm" onClick={() => { updateTask({ description }); setDescDirty(false) }}>Зберегти</Button>
-                      </div>
-                    </div>
-                  )}
+                  <RichTextEditor
+                    key={taskId}
+                    initialContent={task.description}
+                    onSave={(json) => updateTask({ description: json })}
+                  />
                 </div>
 
                 {/* Attachments */}
@@ -633,12 +635,19 @@ export default function TaskModal({ taskId, onClose, isSubtask = false }: Props)
                   )}
                 </div>
 
-                {/* Timestamps */}
-                <div className="px-4 py-3 border-t border-border mt-auto">
+                {/* Timestamps + delete */}
+                <div className="px-4 py-3 border-t border-border mt-auto flex items-center justify-between">
                   <div className="flex gap-4 text-xs text-muted-foreground">
                     <span>Створено: {format(new Date(task.createdAt), 'dd.MM.yyyy HH:mm')}</span>
                     <span>Оновлено: {format(new Date(task.updatedAt), 'dd.MM.yyyy HH:mm')}</span>
                   </div>
+                  <button
+                    onClick={handleDeleteTask}
+                    className="text-muted-foreground hover:text-destructive transition-colors p-1 rounded hover:bg-destructive/10"
+                    title="Видалити завдання"
+                  >
+                    <Trash2 className="size-4" />
+                  </button>
                 </div>
               </div>
 
@@ -794,7 +803,15 @@ export default function TaskModal({ taskId, onClose, isSubtask = false }: Props)
                               <div className="flex justify-between text-xs text-muted-foreground mb-1">
                                 <span>Прогрес</span><span>{doneSubtasks}/{subtasks.length}</span>
                               </div>
-                              <Progress value={(doneSubtasks / subtasks.length) * 100} className="h-1.5" />
+                              <div className="flex gap-px overflow-hidden rounded-full">
+                                {subtasks.map((st) => (
+                                  <div
+                                    key={st.id}
+                                    className="h-1.5 flex-1 transition-colors duration-300"
+                                    style={{ backgroundColor: st.statusId === doneStatus?.id ? '#fad000' : '#e2e8f0' }}
+                                  />
+                                ))}
+                              </div>
                             </div>
                           )}
                         </div>
@@ -832,6 +849,29 @@ export default function TaskModal({ taskId, onClose, isSubtask = false }: Props)
                   </Tabs>
                 </div>
               </div>
+              {/* Confirm discard overlay */}
+              {confirmCloseOpen && (
+                <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
+                  <div className="bg-background border border-border rounded-xl p-6 shadow-xl max-w-sm mx-4">
+                    <p className="text-sm font-semibold mb-1">Закрити завдання?</p>
+                    <p className="text-sm text-muted-foreground mb-4">Завдання без назви — зміни не збережуться, якщо ви закриєте його зараз.</p>
+                    <div className="flex gap-2 justify-end">
+                      <button
+                        className="px-3 py-1.5 text-sm rounded-lg border border-border hover:bg-muted transition-colors"
+                        onClick={() => setConfirmCloseOpen(false)}
+                      >
+                        Продовжити редагування
+                      </button>
+                      <button
+                        className="px-3 py-1.5 text-sm rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
+                        onClick={handleConfirmDiscard}
+                      >
+                        Закрити без збереження
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </DialogContent>

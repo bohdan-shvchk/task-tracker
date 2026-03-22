@@ -93,8 +93,10 @@ export default function KanbanColumn({
 
         <div className="relative shrink-0">
           <button
-            className="w-2.5 h-2.5 rounded-full block hover:ring-2 hover:ring-offset-1 transition-all"
+            className="w-2.5 h-2.5 rounded-full block transition-all"
             style={{ backgroundColor: status.color, boxShadow: colorPickerOpen ? `0 0 0 2px white, 0 0 0 3px ${status.color}` : undefined }}
+            onMouseEnter={(e) => { if (!colorPickerOpen) e.currentTarget.style.boxShadow = `0 0 0 2px white, 0 0 0 3px ${status.color}` }}
+            onMouseLeave={(e) => { if (!colorPickerOpen) e.currentTarget.style.boxShadow = '' }}
             onClick={() => setColorPickerOpen((v) => !v)}
             title="Змінити колір"
           />

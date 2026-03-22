@@ -2,30 +2,37 @@
 
 import { useEffect, useState, use } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Pencil, Check, X, Trash2 } from 'lucide-react'
+import { ArrowLeft, Pencil, Check, X, Plus, LayoutDashboard, List } from 'lucide-react'
 import Sidebar from '@/components/layout/Sidebar'
 import KanbanBoard from '@/components/kanban/KanbanBoard'
+import ListView from '@/components/task/ListView'
 import TaskModal from '@/components/task/TaskModal'
 import TrashModal from '@/components/task/TrashModal'
+import PomodoroTimer from '@/components/pomodoro/PomodoroTimer'
 import { useAppStore } from '@/store/app-store'
 import { Project, Task } from '@/lib/types'
 import { ColorPalette } from '@/components/ui/color-palette'
+import { cn } from '@/lib/utils'
 
 interface Props {
   params: Promise<{ id: string }>
 }
 
+type View = 'kanban' | 'list'
+
 export default function ProjectPage({ params }: Props) {
   const { id } = use(params)
   const router = useRouter()
-  const { setProjects, openTaskId, setOpenTaskId } = useAppStore()
+  const { setProjects, openTaskId, setOpenTaskId, trashOpen, setTrashOpen } = useAppStore()
   const [project, setProject] = useState<Project | null>(null)
   const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
   const [editingName, setEditingName] = useState(false)
   const [nameInput, setNameInput] = useState('')
   const [colorPickerOpen, setColorPickerOpen] = useState(false)
-  const [trashOpen, setTrashOpen] = useState(false)
+  const [view, setView] = useState<View>('kanban')
+
+  const [isNewTask, setIsNewTask] = useState(false)
 
   const fetchProject = async () => {
     try {
@@ -72,6 +79,39 @@ export default function ProjectPage({ params }: Props) {
         const newTask: Task = await res.json()
         setTasks((prev) => [...prev, { ...newTask, project }])
       }
+    } catch (e) { console.error(e) }
+  }
+
+  const handleNewTask = async () => {
+    if (!project?.statuses.length) return
+    try {
+      const firstStatus = project.statuses[0]
+      const res = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: '',
+          projectId: id,
+          statusId: firstStatus.id,
+          order: tasks.filter((t) => t.statusId === firstStatus.id).length,
+        }),
+      })
+      if (res.ok) {
+        const newTask: Task = await res.json()
+        setIsNewTask(true)
+        setOpenTaskId(newTask.id)
+      }
+    } catch (e) { console.error(e) }
+  }
+
+  const handleStatusColorChange = async (statusId: string, color: string) => {
+    setProject((p) => p ? { ...p, statuses: p.statuses.map((s) => s.id === statusId ? { ...s, color } : s) } : p)
+    try {
+      await fetch(`/api/statuses/${statusId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ color }),
+      })
     } catch (e) { console.error(e) }
   }
 
@@ -189,39 +229,86 @@ export default function ProjectPage({ params }: Props) {
             </div>
           )}
           <span className="ml-2 text-sm text-muted-foreground">{tasks.length} завдань</span>
-          <button
-            onClick={() => setTrashOpen(true)}
-            className="ml-auto text-muted-foreground hover:text-foreground transition-colors p-1.5 rounded-lg hover:bg-muted"
-            title="Кошик"
-          >
-            <Trash2 className="size-4" />
-          </button>
+
+          {/* View tabs */}
+          <div className="ml-4 flex items-center gap-0.5 bg-muted rounded-lg p-0.5">
+            <button
+              className={cn(
+                'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-colors',
+                view === 'kanban'
+                  ? 'bg-background text-foreground shadow-sm font-medium'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+              onClick={() => setView('kanban')}
+            >
+              <LayoutDashboard className="size-3.5" />
+              Канбан
+            </button>
+            <button
+              className={cn(
+                'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-colors',
+                view === 'list'
+                  ? 'bg-background text-foreground shadow-sm font-medium'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+              onClick={() => { setView('list'); fetchTasks(); fetchProject() }}
+            >
+              <List className="size-3.5" />
+              Список
+            </button>
+          </div>
+
+          <div className="ml-auto flex items-center gap-2">
+            <PomodoroTimer projectId={id} tasks={tasks} />
+
+            {/* New Task button */}
+            <button
+              onClick={handleNewTask}
+              className="flex items-center gap-1.5 bg-primary text-primary-foreground text-sm font-medium px-3 py-1.5 rounded-lg hover:bg-primary/90 transition-colors"
+            >
+              <Plus className="size-4" />
+              Нове завдання
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-auto px-6 py-5">
-          <KanbanBoard
-            statuses={project.statuses}
-            tasks={tasks}
-            projectId={id}
-            onTaskClick={setOpenTaskId}
-            onAddTask={handleAddTask}
-            onRefresh={handleRefresh}
-          />
+          {view === 'kanban' ? (
+            <KanbanBoard
+              statuses={project.statuses}
+              tasks={tasks}
+              projectId={id}
+              onTaskClick={setOpenTaskId}
+              onAddTask={handleAddTask}
+              onRefresh={handleRefresh}
+            />
+          ) : (
+            <ListView
+              tasks={tasks}
+              statuses={project.statuses}
+              onTaskClick={setOpenTaskId}
+              onRefresh={handleRefresh}
+              onStatusColorChange={handleStatusColorChange}
+            />
+          )}
         </div>
       </main>
 
       {openTaskId && (
         <TaskModal
           taskId={openTaskId}
-          onClose={() => { setOpenTaskId(null); handleRefresh() }}
+          onClose={() => { setOpenTaskId(null); setIsNewTask(false); handleRefresh() }}
+          isNew={isNewTask}
         />
       )}
+
       <TrashModal
         projectId={id}
         open={trashOpen}
         onClose={() => setTrashOpen(false)}
         onRestore={handleRefresh}
       />
+
     </div>
   )
 }

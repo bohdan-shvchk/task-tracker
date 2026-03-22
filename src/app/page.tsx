@@ -183,7 +183,19 @@ export default function DashboardPage() {
               <Select value={filterProject} onValueChange={(v) => v && setFilterProject(v)}>
                 <SelectTrigger className="w-auto gap-1">
                   <Filter className="size-3.5" />
-                  <SelectValue placeholder="Проєкт" />
+                  {filterProject === 'all' ? (
+                    <span className="text-sm">Всі проєкти</span>
+                  ) : (
+                    (() => {
+                      const p = projects.find((proj) => proj.id === filterProject)
+                      return p ? (
+                        <span className="flex items-center gap-1.5 text-sm">
+                          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
+                          {p.name}
+                        </span>
+                      ) : <span className="text-sm">Проєкт</span>
+                    })()
+                  )}
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Всі проєкти</SelectItem>
