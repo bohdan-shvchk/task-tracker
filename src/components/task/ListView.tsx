@@ -369,10 +369,12 @@ export default function ListView({ tasks, statuses, onTaskClick, onRefresh, onSt
         ) : groups.map(group => {
           const isCollapsed = collapsedGroups.has(group.key)
           return (
-            <div key={group.key} className="bg-background border border-border rounded-xl overflow-hidden">
+            <div key={group.key} className="border border-border rounded-xl overflow-hidden"
+              style={{ backgroundColor: group.color ? `${group.color}1A` : 'hsl(var(--background))' }}>
               {/* Group header */}
               {showGroupHeaders && (
-                <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border bg-muted/20 select-none">
+                <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border select-none"
+                  style={{ backgroundColor: group.color ? `${group.color}26` : 'hsl(var(--muted) / 0.2)' }}>
                   <button className="text-muted-foreground hover:text-foreground transition-colors" onClick={() => toggleGroup(group.key)}>
                     {isCollapsed ? <ChevronRight className="size-4" /> : <ChevronDown className="size-4" />}
                   </button>
