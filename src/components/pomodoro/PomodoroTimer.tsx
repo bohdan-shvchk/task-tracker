@@ -181,7 +181,7 @@ function TaskSelect({
   }, [open])
 
   const statusMap = new Map(statuses.map((s) => [s.id, s]))
-  const activeStatuses = statuses.filter((s) => !s.isDone).sort((a, b) => a.order - b.order)
+  const activeStatuses = statuses.filter((s) => !s.isDone).sort((a, b) => b.order - a.order)
   const filteredTasks = tasks.filter((t) => !statusMap.get(t.statusId)?.isDone)
 
   const groups = activeStatuses
