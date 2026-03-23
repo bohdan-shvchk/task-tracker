@@ -416,18 +416,27 @@ const [settingsOpen, setSettingsOpen] = useState(false)
 
   const dotCount = Math.min(pomodoroCount % longBreakInterval || longBreakInterval, 4)
 
+  const handlePlayPause = async () => {
+    if (isRunning) {
+      await handlePause()
+    } else {
+      await handleStart()
+    }
+  }
+
+  const triggerColors = cn(
+    'flex items-center justify-center border transition-colors',
+    isWork && isRunning    ? 'bg-red-50 border-red-200 text-red-700' :
+    isBreak && isLongBreak ? 'bg-blue-50 border-blue-200 text-blue-700' :
+    isBreak                ? 'bg-green-50 border-green-200 text-green-700' :
+    isWork && !isRunning   ? 'bg-muted border-border text-foreground' :
+                             'bg-muted border-border text-muted-foreground hover:text-foreground'
+  )
+
   return (
+    <div className="flex items-center gap-1">
     <Popover>
-      <PopoverTrigger
-        className={cn(
-          'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors',
-          isWork && isRunning  ? 'bg-red-50 border-red-200 text-red-700' :
-          isBreak && isLongBreak ? 'bg-blue-50 border-blue-200 text-blue-700' :
-          isBreak              ? 'bg-green-50 border-green-200 text-green-700' :
-          isWork && !isRunning ? 'bg-muted border-border text-foreground' :
-                                 'bg-muted border-border text-muted-foreground hover:text-foreground'
-        )}
-      >
+      <PopoverTrigger className={cn(triggerColors, 'gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium')}>
         <Timer className="size-3.5 shrink-0" />
         <span className="font-mono">{isIdle ? 'Помодоро' : fmt(secondsLeft)}</span>
       </PopoverTrigger>
@@ -611,5 +620,17 @@ const [settingsOpen, setSettingsOpen] = useState(false)
         )}
       </PopoverContent>
     </Popover>
+
+    <button
+      onClick={handlePlayPause}
+      title={isRunning ? 'Пауза' : 'Старт'}
+      className={cn(triggerColors, 'w-8 h-8 rounded-lg')}
+    >
+      {isRunning
+        ? <Pause className="size-3.5" />
+        : <Play className="size-3.5 ml-0.5" />
+      }
+    </button>
+    </div>
   )
 }
