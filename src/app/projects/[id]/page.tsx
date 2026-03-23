@@ -259,7 +259,7 @@ export default function ProjectPage({ params }: Props) {
           </div>
 
           <div className="ml-auto flex items-center gap-2">
-            <PomodoroTimer projectId={id} tasks={tasks} />
+            <PomodoroTimer projectId={id} tasks={tasks} statuses={project?.statuses ?? []} />
 
             {/* New Task button */}
             <button

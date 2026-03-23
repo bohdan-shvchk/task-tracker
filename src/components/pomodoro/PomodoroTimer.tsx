@@ -8,7 +8,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { usePomodoroStore, SoundType } from '@/store/pomodoro-store'
 import { useTimerStore } from '@/store/timer-store'
-import { Task } from '@/lib/types'
+import { Task, Status } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 // ─── Audio ───────────────────────────────────────────────────────────────────
@@ -153,11 +153,115 @@ function StyledSelect<T extends string>({
   )
 }
 
+// ─── TaskSelect ───────────────────────────────────────────────────────────────
+
+function TaskSelect({
+  value,
+  onChange,
+  tasks,
+  statuses,
+  className,
+}: {
+  value: string | null
+  onChange: (taskId: string | null) => void
+  tasks: Task[]
+  statuses: Status[]
+  className?: string
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  const statusMap = new Map(statuses.map((s) => [s.id, s]))
+  const activeStatuses = statuses.filter((s) => !s.isDone).sort((a, b) => a.order - b.order)
+  const filteredTasks = tasks.filter((t) => !statusMap.get(t.statusId)?.isDone)
+
+  const groups = activeStatuses
+    .map((status) => ({ status, tasks: filteredTasks.filter((t) => t.statusId === status.id) }))
+    .filter((g) => g.tasks.length > 0)
+
+  const selectedTask = filteredTasks.find((t) => t.id === value)
+
+  return (
+    <div ref={ref} className={cn('relative', className)}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between gap-1.5 px-2.5 py-1.5 text-sm border border-border rounded-lg bg-background hover:bg-muted transition-colors"
+      >
+        <span className="truncate min-w-0">
+          {selectedTask
+            ? <span className="truncate">{selectedTask.title || 'Без назви'}</span>
+            : <span className="text-muted-foreground">Оберіть задачу...</span>
+          }
+        </span>
+        <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
+      </button>
+
+      {open && (
+        <div className="absolute top-full left-0 right-0 mt-1 z-[100] bg-popover border border-border rounded-lg shadow-md overflow-hidden">
+          <div className="p-2 flex flex-col gap-2 max-h-[15rem] overflow-y-auto">
+            <button
+              type="button"
+              onClick={() => { onChange(null); setOpen(false) }}
+              className={cn(
+                'w-full flex items-center p-2 text-sm text-left rounded-[0.25rem] transition-colors',
+                !value ? 'bg-[#E0E8F8] text-[#2A6FF3]' : 'text-foreground hover:bg-[#E0E8F8] hover:text-[#2A6FF3]'
+              )}
+            >
+              <span className="truncate">Без задачі</span>
+            </button>
+
+            {groups.map(({ status, tasks: groupTasks }) => (
+              <div key={status.id} className="flex flex-col gap-2">
+                <div className="flex items-center gap-1.5 px-0.5">
+                  <div className="h-px flex-1" style={{ backgroundColor: status.color }} />
+                  <span className="text-[10px] font-medium shrink-0" style={{ color: status.color }}>
+                    {status.name}
+                  </span>
+                  <div className="h-px flex-1" style={{ backgroundColor: status.color }} />
+                </div>
+                {groupTasks.map((task) => {
+                  const isSelected = task.id === value
+                  return (
+                    <button
+                      key={task.id}
+                      type="button"
+                      onClick={() => { onChange(task.id); setOpen(false) }}
+                      className={cn(
+                        'w-full flex items-center p-2 text-sm text-left rounded-[0.25rem] transition-colors',
+                        isSelected
+                          ? 'bg-[#E0E8F8] text-[#2A6FF3]'
+                          : 'text-foreground hover:bg-[#E0E8F8] hover:text-[#2A6FF3]'
+                      )}
+                    >
+                      <span className="truncate">{task.title || 'Без назви'}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 interface Props {
   projectId: string
   tasks: Task[]
+  statuses: Status[]
 }
 
 const SOUND_OPTIONS: SelectOption<SoundType>[] = [
@@ -167,7 +271,7 @@ const SOUND_OPTIONS: SelectOption<SoundType>[] = [
   { value: 'none',    label: 'Без звуку',  icon: VolumeX },
 ]
 
-export default function PomodoroTimer({ projectId, tasks }: Props) {
+export default function PomodoroTimer({ projectId, tasks, statuses }: Props) {
   const store = usePomodoroStore()
   const timerStore = useTimerStore()
 const [settingsOpen, setSettingsOpen] = useState(false)
@@ -312,12 +416,6 @@ const [settingsOpen, setSettingsOpen] = useState(false)
 
   const dotCount = Math.min(pomodoroCount % longBreakInterval || longBreakInterval, 4)
 
-  // Task options for StyledSelect
-  const taskOptions: SelectOption<string>[] = [
-    { value: '__none__', label: 'Без задачі' },
-    ...tasks.map((t) => ({ value: t.id, label: t.title || 'Без назви' })),
-  ]
-
   return (
     <Popover>
       <PopoverTrigger
@@ -404,15 +502,15 @@ const [settingsOpen, setSettingsOpen] = useState(false)
         {(!isWork || pomodoroCount === 0) && <div className="mb-3" />}
 
         {/* Task selector */}
-        <StyledSelect
-          value={activeTaskId ?? '__none__'}
-          onChange={(v) => {
-            if (!v || v === '__none__') return store.setTask(null, null)
-            const t = tasks.find((t) => t.id === v)
-            store.setTask(v, t?.title ?? null)
+        <TaskSelect
+          value={activeTaskId}
+          onChange={(taskId) => {
+            if (!taskId) return store.setTask(null, null)
+            const t = tasks.find((t) => t.id === taskId)
+            store.setTask(taskId, t?.title ?? null)
           }}
-          options={taskOptions}
-          placeholder="Оберіть задачу..."
+          tasks={tasks}
+          statuses={statuses}
           className="mb-3"
         />
 
