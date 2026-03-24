@@ -3,6 +3,7 @@ export interface Project {
   name: string
   color: string
   icon?: string
+  url?: string
   statuses: Status[]
   _count?: { tasks: number }
   createdAt: string

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, use } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Pencil, Check, X, Plus, LayoutDashboard, List } from 'lucide-react'
+import { ArrowLeft, Pencil, Check, X, Plus, LayoutDashboard, List, ExternalLink } from 'lucide-react'
 import Sidebar from '@/components/layout/Sidebar'
 import KanbanBoard from '@/components/kanban/KanbanBoard'
 import ListView from '@/components/task/ListView'
@@ -229,6 +229,18 @@ export default function ProjectPage({ params }: Props) {
             </div>
           )}
           <span className="ml-2 text-sm text-muted-foreground">{tasks.length} завдань</span>
+          {project.url && (
+            <a
+              href={project.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              title={project.url}
+            >
+              <ExternalLink className="size-3.5" />
+              {new URL(project.url).hostname}
+            </a>
+          )}
 
           {/* View tabs */}
           <div className="ml-4 flex items-center gap-0.5 bg-muted rounded-lg p-0.5">

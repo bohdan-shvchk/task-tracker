@@ -54,13 +54,14 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { name, color } = body;
+    const { name, color, url } = body;
 
     const project = await prisma.project.update({
       where: { id },
       data: {
         ...(name !== undefined && { name }),
         ...(color !== undefined && { color }),
+        ...(url !== undefined && { url }),
       },
       include: {
         statuses: {

@@ -15,6 +15,7 @@ interface Props {
 export default function CreateProjectModal({ onClose, onCreated }: Props) {
   const [name, setName] = useState('')
   const [color, setColor] = useState('#6366f1')
+  const [url, setUrl] = useState('')
   const [loading, setLoading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -25,7 +26,7 @@ export default function CreateProjectModal({ onClose, onCreated }: Props) {
       const res = await fetch('/api/projects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), color }),
+        body: JSON.stringify({ name: name.trim(), color, url: url.trim() || null }),
       })
       if (res.ok) {
         const project = await res.json()
@@ -53,6 +54,16 @@ export default function CreateProjectModal({ onClose, onCreated }: Props) {
               value={name}
               onChange={(e) => setName(e.target.value)}
               autoFocus
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium">URL сайту</label>
+            <Input
+              placeholder="https://..."
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              type="url"
             />
           </div>
 
