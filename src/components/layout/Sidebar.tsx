@@ -44,15 +44,13 @@ export default function Sidebar() {
             {label}
           </Link>
         ))}
-        {isOnProject && (
-          <button
-            onClick={() => setTrashOpen(true)}
-            className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm transition-colors text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground w-full text-left"
-          >
-            <Trash2 className="size-4 shrink-0" />
-            Кошик
-          </button>
-        )}
+        <button
+          onClick={() => setTrashOpen(true)}
+          className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm transition-colors text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground w-full text-left"
+        >
+          <Trash2 className="size-4 shrink-0" />
+          Кошик
+        </button>
       </nav>
 
       <div className="h-px bg-sidebar-border mb-4" />

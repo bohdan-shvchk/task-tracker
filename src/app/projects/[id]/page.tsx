@@ -90,7 +90,7 @@ export default function ProjectPage({ params }: Props) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: '',
+          title: 'Нове завдання',
           projectId: id,
           statusId: firstStatus.id,
           order: tasks.filter((t) => t.statusId === firstStatus.id).length,
