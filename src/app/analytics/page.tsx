@@ -58,7 +58,7 @@ interface StatCardProps {
 
 function StatCard({ label, value, description, icon, valueClassName }: StatCardProps) {
   return (
-    <div className="rounded-2xl border bg-card p-6 flex flex-col gap-3">
+    <div className="rounded-2xl border bg-card shadow-sm p-6 flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium text-muted-foreground">{label}</span>
         <span className="text-muted-foreground">{icon}</span>
@@ -163,7 +163,7 @@ export default function AnalyticsPage() {
     : 0
 
   return (
-    <div className="flex flex-1 min-h-screen bg-muted/20">
+    <div className="flex flex-1 min-h-screen bg-muted/40">
       <Sidebar />
 
       <main className="flex-1 overflow-y-auto px-6 py-8">
@@ -206,7 +206,7 @@ export default function AnalyticsPage() {
 
         {/* By-project completion table */}
         {subtaskStats && subtaskStats.byProject.length > 0 && (
-          <div className="rounded-2xl border bg-card overflow-hidden mb-6">
+          <div className="rounded-2xl border bg-card shadow-sm overflow-hidden mb-6">
             <div className="px-6 py-4 border-b border-border">
               <p className="text-sm font-semibold">Прогрес по проєктах</p>
             </div>
@@ -301,7 +301,7 @@ export default function AnalyticsPage() {
         ) : (
           <>
             {/* Total time card */}
-            <div className="rounded-2xl border bg-card p-6 mb-6 inline-flex flex-col gap-3">
+            <div className="rounded-2xl border bg-card shadow-sm p-6 mb-6 inline-flex flex-col gap-3">
               <div className="flex items-center justify-between gap-8">
                 <span className="text-sm font-medium text-muted-foreground">Загальний час</span>
                 <Clock className="size-4 text-muted-foreground" />
@@ -313,7 +313,7 @@ export default function AnalyticsPage() {
 
             {/* Bar chart */}
             {chartData.length > 0 && (
-              <div className="rounded-2xl border bg-card p-6 mb-6">
+              <div className="rounded-2xl border bg-card shadow-sm p-6 mb-6">
                 <p className="text-sm font-semibold mb-6">Топ 10 завдань за часом</p>
                 <ResponsiveContainer width="100%" height={280}>
                   <BarChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 60 }}>
@@ -346,7 +346,7 @@ export default function AnalyticsPage() {
                         return entry?.fullTitle ?? label
                       }}
                     />
-                    <Bar dataKey="hours" fill="var(--primary)" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="hours" fill="#6366f1" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -354,7 +354,7 @@ export default function AnalyticsPage() {
 
             {/* Time-log table */}
             {(data?.entries ?? []).length > 0 ? (
-              <div className="rounded-2xl border bg-card overflow-hidden">
+              <div className="rounded-2xl border bg-card shadow-sm overflow-hidden">
                 <div className="px-6 py-4 border-b border-border">
                   <p className="text-sm font-semibold">Деталізація по завданнях</p>
                 </div>
