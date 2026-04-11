@@ -79,7 +79,7 @@ export default function KanbanColumn({
   }
 
   return (
-    <div ref={setSortRef} style={style} className="flex flex-col w-72 shrink-0">
+    <div ref={setSortRef} style={style} className="flex flex-col flex-1 min-w-72">
       {/* Column header */}
       <div className="flex items-center gap-2 mb-3 px-1">
         {/* Drag handle */}

@@ -286,7 +286,7 @@ export default function KanbanBoard({ statuses, tasks, projectId, onTaskClick, o
       onDragEnd={handleDragEnd}
     >
       <SortableContext items={sorted.map((s) => s.id)} strategy={horizontalListSortingStrategy}>
-        <div className="flex gap-5 min-h-full pb-6 pt-4 px-6">
+        <div className="flex gap-5 min-h-full w-full pb-6 pt-4 px-6">
           {sorted.map((status) => (
             <KanbanColumn
               key={status.id}
