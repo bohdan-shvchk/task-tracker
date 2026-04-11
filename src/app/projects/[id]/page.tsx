@@ -161,9 +161,9 @@ export default function ProjectPage({ params }: Props) {
 
   if (loading) {
     return (
-      <div className="flex flex-1 min-h-screen bg-muted/20">
+      <div className="flex h-screen overflow-hidden bg-muted/20">
         <Sidebar />
-        <main className="flex-1 flex items-center justify-center">
+        <main className="flex-1 min-w-0 flex items-center justify-center">
           <p className="text-muted-foreground">Завантаження...</p>
         </main>
       </div>
@@ -172,9 +172,9 @@ export default function ProjectPage({ params }: Props) {
 
   if (!project) {
     return (
-      <div className="flex flex-1 min-h-screen bg-muted/20">
+      <div className="flex h-screen overflow-hidden bg-muted/20">
         <Sidebar />
-        <main className="flex-1 flex items-center justify-center">
+        <main className="flex-1 min-w-0 flex items-center justify-center">
           <p className="text-muted-foreground">Проєкт не знайдено</p>
         </main>
       </div>
@@ -182,11 +182,11 @@ export default function ProjectPage({ params }: Props) {
   }
 
   return (
-    <div className="flex flex-1 min-h-screen bg-muted/20">
+    <div className="flex h-screen overflow-hidden bg-muted/20">
       <Sidebar />
-      <main className="flex-1 overflow-hidden flex flex-col">
+      <main className="flex-1 min-w-0 overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-center gap-3 px-6 py-4 border-b border-border bg-background">
+        <div className="shrink-0 flex items-center gap-3 px-6 py-4 border-b border-border bg-background">
           <button onClick={() => router.push('/')} className="text-muted-foreground hover:text-foreground transition-colors">
             <ArrowLeft className="size-4" />
           </button>
@@ -322,7 +322,7 @@ export default function ProjectPage({ params }: Props) {
           </div>
         </div>
 
-        <div className="flex-1 overflow-auto px-6 py-5">
+        <div className="flex-1 min-h-0 overflow-auto px-6 py-5">
           {view === 'kanban' ? (
             <KanbanBoard
               statuses={project.statuses}

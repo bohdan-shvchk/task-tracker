@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Plus, Search, Filter, SortAsc, ClipboardList } from 'lucide-react'
+import { Plus, Search, Filter, SortAsc, ClipboardList, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -36,6 +36,18 @@ export default function DashboardPage() {
   const [filterProject, setFilterProject] = useState<string>('all')
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest')
   const [showCreateProject, setShowCreateProject] = useState(false)
+  const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null)
+
+  const handleDeleteProject = async (projectId: string) => {
+    try {
+      const res = await fetch(`/api/projects/${projectId}`, { method: 'DELETE' })
+      if (res.ok) {
+        setProjects(projects.filter((p) => p.id !== projectId))
+        setTasks(tasks.filter((t) => t.projectId !== projectId))
+      }
+    } catch (e) { console.error(e) }
+    setDeletingProjectId(null)
+  }
 
   const fetchData = async () => {
     try {
@@ -296,24 +308,43 @@ export default function DashboardPage() {
                   .join('')
                   .toUpperCase()
                 return (
-                  <a
-                    key={proj.id}
-                    href={`/projects/${proj.id}`}
-                    className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-muted transition-colors"
-                  >
-                    <div
-                      className="w-6 h-6 rounded-md flex items-center justify-center text-white text-xs font-bold shrink-0"
-                      style={{ backgroundColor: proj.color }}
+                  <div key={proj.id} className="group flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-muted transition-colors">
+                    <a
+                      href={`/projects/${proj.id}`}
+                      className="flex items-center gap-2.5 flex-1 min-w-0"
                     >
-                      {initials}
-                    </div>
-                    <span className="text-sm truncate">{proj.name}</span>
-                    {proj._count && (
-                      <span className="ml-auto text-xs text-muted-foreground">
-                        {proj._count.tasks}
-                      </span>
+                      <div
+                        className="w-6 h-6 rounded-md flex items-center justify-center text-white text-xs font-bold shrink-0"
+                        style={{ backgroundColor: proj.color }}
+                      >
+                        {initials}
+                      </div>
+                      <span className="text-sm truncate">{proj.name}</span>
+                    </a>
+                    {deletingProjectId === proj.id ? (
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          onClick={() => handleDeleteProject(proj.id)}
+                          className="text-xs text-destructive font-medium hover:underline"
+                        >
+                          Так
+                        </button>
+                        <button
+                          onClick={() => setDeletingProjectId(null)}
+                          className="text-xs text-muted-foreground hover:text-foreground"
+                        >
+                          Ні
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setDeletingProjectId(proj.id)}
+                        className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all shrink-0"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </button>
                     )}
-                  </a>
+                  </div>
                 )
               })}
             </div>
