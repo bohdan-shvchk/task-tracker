@@ -2,7 +2,7 @@
 
 import { useEffect, useState, use } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Pencil, Check, X, Plus, LayoutDashboard, List, ExternalLink } from 'lucide-react'
+import { ArrowLeft, Pencil, Check, X, Plus, LayoutDashboard, List, ExternalLink, Trash2 } from 'lucide-react'
 import Sidebar from '@/components/layout/Sidebar'
 import KanbanBoard from '@/components/kanban/KanbanBoard'
 import ListView from '@/components/task/ListView'
@@ -33,6 +33,18 @@ export default function ProjectPage({ params }: Props) {
   const [view, setView] = useState<View>('kanban')
 
   const [isNewTask, setIsNewTask] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState(false)
+
+  const handleDeleteProject = async () => {
+    try {
+      const res = await fetch(`/api/projects/${id}`, { method: 'DELETE' })
+      if (res.ok) {
+        const allProjects = await fetch('/api/projects').then((r) => r.json())
+        setProjects(allProjects)
+        router.push('/')
+      }
+    } catch (e) { console.error(e) }
+  }
 
   const fetchProject = async () => {
     try {
@@ -269,6 +281,32 @@ export default function ProjectPage({ params }: Props) {
               Список
             </button>
           </div>
+
+          {deleteConfirm ? (
+            <div className="flex items-center gap-2 ml-2">
+              <span className="text-sm text-muted-foreground">Видалити проєкт?</span>
+              <button
+                onClick={handleDeleteProject}
+                className="text-sm text-destructive font-medium hover:underline"
+              >
+                Так
+              </button>
+              <button
+                onClick={() => setDeleteConfirm(false)}
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
+                Ні
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setDeleteConfirm(true)}
+              className="ml-2 text-muted-foreground hover:text-destructive transition-colors"
+              title="Видалити проєкт"
+            >
+              <Trash2 className="size-4" />
+            </button>
+          )}
 
           <div className="ml-auto flex items-center gap-2">
             <PomodoroTimer projectId={id} tasks={tasks} statuses={project?.statuses ?? []} />
