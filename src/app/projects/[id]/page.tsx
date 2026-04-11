@@ -322,7 +322,10 @@ export default function ProjectPage({ params }: Props) {
           </div>
         </div>
 
-        <div className="flex-1 min-h-0 overflow-auto px-6 py-5">
+        <div className={cn(
+          'flex-1 min-h-0',
+          view === 'kanban' ? 'overflow-hidden' : 'overflow-auto px-6 py-5'
+        )}>
           {view === 'kanban' ? (
             <KanbanBoard
               statuses={project.statuses}
