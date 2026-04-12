@@ -6,6 +6,7 @@ import {
   Target, Coffee, Moon, Bell, Cpu, Music2, VolumeX, ChevronDown, Circle,
 } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Button } from '@/components/ui/button'
 import { usePomodoroStore, SoundType } from '@/store/pomodoro-store'
 import { useTimerStore } from '@/store/timer-store'
 import { Task, Status } from '@/lib/types'
@@ -107,10 +108,11 @@ function StyledSelect<T extends string>({
 
   return (
     <div ref={ref} className={cn('relative', className)}>
-      <button
+      <Button
         type="button"
+        variant="ghost"
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between gap-1.5 px-2.5 py-1.5 text-sm border border-border rounded-lg bg-background hover:bg-muted transition-colors"
+        className="w-full flex items-center justify-between gap-1.5 px-2.5 py-1.5 text-sm border border-border rounded-lg bg-background hover:bg-muted transition-colors h-auto"
       >
         <span className="flex items-center gap-2 truncate min-w-0">
           {selected ? (
@@ -123,7 +125,7 @@ function StyledSelect<T extends string>({
           )}
         </span>
         <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
-      </button>
+      </Button>
 
       {open && (
         <div className="absolute top-full left-0 right-0 mt-1 z-[100] bg-popover border border-border rounded-lg shadow-md p-2 flex flex-col gap-2">
@@ -131,12 +133,13 @@ function StyledSelect<T extends string>({
             const isSelected = opt.value === value
             const Icon = opt.icon
             return (
-              <button
+              <Button
                 key={opt.value}
                 type="button"
+                variant="ghost"
                 onClick={() => { onChange(opt.value); setOpen(false) }}
                 className={cn(
-                  'w-full flex items-center gap-2 p-2 text-sm text-left rounded-[0.25rem] transition-colors',
+                  'w-full flex items-center gap-2 p-2 text-sm text-left rounded-[0.25rem] transition-colors h-auto justify-start',
                   isSelected
                     ? 'bg-[#E0E8F8] text-[#2A6FF3]'
                     : 'text-foreground hover:bg-[#E0E8F8] hover:text-[#2A6FF3]'
@@ -144,7 +147,7 @@ function StyledSelect<T extends string>({
               >
                 {Icon && <Icon className="size-3.5 shrink-0 opacity-70" />}
                 <span className="truncate">{opt.label}</span>
-              </button>
+              </Button>
             )
           })}
         </div>
@@ -192,10 +195,11 @@ function TaskSelect({
 
   return (
     <div ref={ref} className={cn('relative', className)}>
-      <button
+      <Button
         type="button"
+        variant="ghost"
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between gap-1.5 px-2.5 py-1.5 text-sm border border-border rounded-lg bg-background hover:bg-muted transition-colors"
+        className="w-full flex items-center justify-between gap-1.5 px-2.5 py-1.5 text-sm border border-border rounded-lg bg-background hover:bg-muted transition-colors h-auto"
       >
         <span className="truncate min-w-0">
           {selectedTask
@@ -204,21 +208,22 @@ function TaskSelect({
           }
         </span>
         <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
-      </button>
+      </Button>
 
       {open && (
         <div className="absolute top-full left-0 right-0 mt-1 z-[100] bg-popover border border-border rounded-lg shadow-md overflow-hidden">
           <div className="p-2 flex flex-col gap-2 max-h-[15rem] overflow-y-auto">
-            <button
+            <Button
               type="button"
+              variant="ghost"
               onClick={() => { onChange(null); setOpen(false) }}
               className={cn(
-                'w-full flex items-center p-2 text-sm text-left rounded-[0.25rem] transition-colors',
+                'w-full flex items-center p-2 text-sm text-left rounded-[0.25rem] transition-colors h-auto justify-start',
                 !value ? 'bg-[#E0E8F8] text-[#2A6FF3]' : 'text-foreground hover:bg-[#E0E8F8] hover:text-[#2A6FF3]'
               )}
             >
               <span className="truncate">Без задачі</span>
-            </button>
+            </Button>
 
             {groups.map(({ status, tasks: groupTasks }) => (
               <div key={status.id} className="flex flex-col gap-2">
@@ -232,19 +237,20 @@ function TaskSelect({
                 {groupTasks.map((task) => {
                   const isSelected = task.id === value
                   return (
-                    <button
+                    <Button
                       key={task.id}
                       type="button"
+                      variant="ghost"
                       onClick={() => { onChange(task.id); setOpen(false) }}
                       className={cn(
-                        'w-full flex items-center p-2 text-sm text-left rounded-[0.25rem] transition-colors',
+                        'w-full flex items-center p-2 text-sm text-left rounded-[0.25rem] transition-colors h-auto justify-start',
                         isSelected
                           ? 'bg-[#E0E8F8] text-[#2A6FF3]'
                           : 'text-foreground hover:bg-[#E0E8F8] hover:text-[#2A6FF3]'
                       )}
                     >
                       <span className="truncate">{task.title || 'Без назви'}</span>
-                    </button>
+                    </Button>
                   )
                 })}
               </div>
@@ -451,17 +457,18 @@ const [settingsOpen, setSettingsOpen] = useState(false)
               { key: 'break',      label: 'Перерва', Icon: Coffee, active: 'bg-green-100 text-green-700' },
               { key: 'long_break', label: 'Довга',   Icon: Moon,   active: 'bg-blue-100 text-blue-700' },
             ] as const).map(({ key, label, Icon, active }) => (
-              <button
+              <Button
                 key={key}
+                variant="ghost"
                 onClick={() => setStartMode(key)}
                 className={cn(
-                  'flex-1 flex items-center justify-center gap-1 text-[11px] font-medium py-1 rounded-md transition-colors',
+                  'flex-1 flex items-center justify-center gap-1 text-[11px] font-medium py-1 rounded-md transition-colors h-auto',
                   startMode === key ? active : 'text-muted-foreground hover:text-foreground'
                 )}
               >
                 <Icon className="size-3" />
                 {label}
-              </button>
+              </Button>
             ))}
           </div>
         ) : (
@@ -525,34 +532,36 @@ const [settingsOpen, setSettingsOpen] = useState(false)
 
         {/* Controls */}
         <div className="flex items-center justify-center gap-2 mb-2">
-          <button onClick={handleReset} title="Скинути"
-            className="w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+          <Button variant="ghost" size="icon" onClick={handleReset} title="Скинути"
+            className="w-8 h-8 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
             <RotateCcw className="size-4" />
-          </button>
+          </Button>
 
           {isRunning ? (
-            <button onClick={handlePause}
-              className="w-12 h-12 flex items-center justify-center rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm">
+            <Button onClick={handlePause}
+              className="w-12 h-12 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm">
               <Pause className="size-5" />
-            </button>
+            </Button>
           ) : (
-            <button onClick={handleStart}
-              className="w-12 h-12 flex items-center justify-center rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm">
+            <Button onClick={handleStart}
+              className="w-12 h-12 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm">
               <Play className="size-5 ml-0.5" />
-            </button>
+            </Button>
           )}
 
-          <button
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={isBreak ? handleSkipBreak : undefined}
             disabled={!isBreak}
             title={isBreak ? 'Пропустити перерву' : undefined}
             className={cn(
-              'w-8 h-8 flex items-center justify-center rounded-lg transition-colors',
+              'w-8 h-8 rounded-lg transition-colors',
               isBreak ? 'text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer'
                       : 'text-muted/30 cursor-default'
             )}>
             <SkipForward className="size-4" />
-          </button>
+          </Button>
         </div>
 
         {isBreak && (
@@ -562,13 +571,14 @@ const [settingsOpen, setSettingsOpen] = useState(false)
         )}
 
         {/* Settings toggle */}
-        <button
+        <Button
+          variant="ghost"
           onClick={() => setSettingsOpen((v) => !v)}
-          className="w-full flex items-center justify-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors mt-1"
+          className="w-full flex items-center justify-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors mt-1 h-auto py-1"
         >
           <Settings className="size-3" />
           {settingsOpen ? 'Сховати налаштування' : 'Налаштування'}
-        </button>
+        </Button>
 
         {/* Settings panel */}
         {settingsOpen && (
@@ -621,7 +631,9 @@ const [settingsOpen, setSettingsOpen] = useState(false)
       </PopoverContent>
     </Popover>
 
-    <button
+    <Button
+      variant="ghost"
+      size="icon"
       onClick={handlePlayPause}
       title={isRunning ? 'Пауза' : 'Старт'}
       className={cn(triggerColors, 'w-8 h-8 rounded-lg')}
@@ -630,7 +642,7 @@ const [settingsOpen, setSettingsOpen] = useState(false)
         ? <Pause className="size-3.5" />
         : <Play className="size-3.5 ml-0.5" />
       }
-    </button>
+    </Button>
     </div>
   )
 }

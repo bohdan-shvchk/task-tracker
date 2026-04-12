@@ -403,9 +403,9 @@ export default function TaskModal({ taskId, onClose, isSubtask = false, isNew = 
                     onBlur={handleTitleBlur}
                     placeholder="Назва завдання"
                   />
-                  <button onClick={handleClose} className="text-muted-foreground hover:text-foreground ml-2 p-1">
+                  <Button variant="ghost" size="icon" onClick={handleClose} className="text-muted-foreground hover:text-foreground ml-2">
                     <X className="size-4" />
-                  </button>
+                  </Button>
                 </div>
 
                 {/* Project + Status + Mark done */}
@@ -519,8 +519,8 @@ export default function TaskModal({ taskId, onClose, isSubtask = false, isNew = 
                                           if (e.key === 'Escape') setEditingLabelId(null)
                                         }}
                                       />
-                                      <button onClick={() => handleUpdateLabel(lbl.id)} className="text-green-600 hover:text-green-700"><Check className="size-3" /></button>
-                                      <button onClick={() => setEditingLabelId(null)} className="text-muted-foreground hover:text-foreground"><X className="size-3" /></button>
+                                      <Button variant="ghost" size="icon" onClick={() => handleUpdateLabel(lbl.id)} className="text-green-600 hover:text-green-700 size-5"><Check className="size-3" /></Button>
+                                      <Button variant="ghost" size="icon" onClick={() => setEditingLabelId(null)} className="text-muted-foreground hover:text-foreground size-5"><X className="size-3" /></Button>
                                     </div>
                                     <ColorPalette value={editingLabelColor} onChange={setEditingLabelColor} className="p-0" />
                                   </div>
@@ -528,22 +528,27 @@ export default function TaskModal({ taskId, onClose, isSubtask = false, isNew = 
                               }
                               return (
                                 <div key={lbl.id} className="flex items-center gap-1 px-1 py-0.5 rounded-md hover:bg-muted group">
-                                  <button
-                                    className="flex items-center gap-2 flex-1 text-sm text-left py-1"
+                                  <Button
+                                    variant="ghost"
+                                    className="flex items-center gap-2 flex-1 text-sm text-left py-1 h-auto justify-start"
                                     onClick={() => handleAddLabel(lbl.id)}
                                   >
                                     <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: lbl.color }} />
                                     <span className="flex-1">{lbl.name}</span>
                                     {isActive && <Check className="size-3 text-primary" />}
-                                  </button>
-                                  <button
-                                    className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground p-0.5"
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground size-5"
                                     onClick={() => { setEditingLabelId(lbl.id); setEditingLabelName(lbl.name); setEditingLabelColor(lbl.color) }}
-                                  ><Pencil className="size-2.5" /></button>
-                                  <button
-                                    className="opacity-0 group-hover:opacity-100 text-destructive hover:text-destructive/80 p-0.5"
+                                  ><Pencil className="size-2.5" /></Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="opacity-0 group-hover:opacity-100 text-destructive hover:text-destructive/80 size-5"
                                     onClick={() => handleDeleteLabel(lbl.id)}
-                                  ><Trash2 className="size-2.5" /></button>
+                                  ><Trash2 className="size-2.5" /></Button>
                                 </div>
                               )
                             })}
@@ -647,10 +652,12 @@ export default function TaskModal({ taskId, onClose, isSubtask = false, isNew = 
                           <Paperclip className="size-3.5 text-muted-foreground shrink-0" />
                           <a href={att.url} target="_blank" rel="noopener noreferrer" className="flex-1 truncate hover:underline">{att.filename}</a>
                           <span className="text-xs text-muted-foreground">{(att.size / 1024).toFixed(0)} KB</span>
-                          <button
+                          <Button
+                            variant="ghost"
+                            size="icon"
                             className="opacity-0 group-hover:opacity-100 text-destructive hover:text-destructive/80 transition-opacity"
                             onClick={() => handleDeleteAttachment(att.id)}
-                          ><Trash2 className="size-3.5" /></button>
+                          ><Trash2 className="size-3.5" /></Button>
                         </div>
                       ))}
                     </div>
@@ -665,13 +672,15 @@ export default function TaskModal({ taskId, onClose, isSubtask = false, isNew = 
                     <span>Створено: {format(new Date(task.createdAt), 'dd.MM.yyyy HH:mm')}</span>
                     <span>Оновлено: {format(new Date(task.updatedAt), 'dd.MM.yyyy HH:mm')}</span>
                   </div>
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     onClick={handleDeleteTask}
-                    className="text-muted-foreground hover:text-destructive transition-colors p-1 rounded hover:bg-destructive/10"
+                    className="text-muted-foreground hover:text-destructive transition-colors hover:bg-destructive/10"
                     title="Видалити завдання"
                   >
                     <Trash2 className="size-4" />
-                  </button>
+                  </Button>
                 </div>
               </div>
 
@@ -698,13 +707,15 @@ export default function TaskModal({ taskId, onClose, isSubtask = false, isNew = 
                         <Play className="size-3.5" />Старт
                       </Button>
                     )}
-                    <button
-                      className="ml-auto text-xs text-muted-foreground hover:text-foreground flex items-center gap-0.5 border border-dashed border-border rounded px-1.5 py-1"
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="ml-auto text-xs text-muted-foreground hover:text-foreground border border-dashed border-border rounded px-1.5 py-1 size-7"
                       onClick={() => setAddingManualTime(!addingManualTime)}
                       title="Додати час вручну"
                     >
                       <Plus className="size-3" />
-                    </button>
+                    </Button>
                   </div>
 
                   {/* Manual time entry form */}
@@ -732,10 +743,10 @@ export default function TaskModal({ taskId, onClose, isSubtask = false, isNew = 
                   {/* Total + logs */}
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-muted-foreground">Витрачено: <strong>{formatDuration(totalLoggedSeconds)}</strong></span>
-                    <button className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1" onClick={() => setTimeLogsOpen(!timeLogsOpen)}>
+                    <Button variant="ghost" className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 h-auto px-1 py-0" onClick={() => setTimeLogsOpen(!timeLogsOpen)}>
                       <Clock className="size-3" />
                       {timeLogsOpen ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
-                    </button>
+                    </Button>
                   </div>
 
                   {timeLogsOpen && (
@@ -749,9 +760,9 @@ export default function TaskModal({ taskId, onClose, isSubtask = false, isNew = 
                             {format(new Date(tl.startTime), 'dd.MM HH:mm')} — {tl.endTime ? format(new Date(tl.endTime), 'HH:mm') : '...'}
                           </span>
                           <span className="font-mono font-medium">{formatDuration(tl.duration ?? 0)}</span>
-                          <button onClick={() => handleDeleteTimeLog(tl.id)} className="text-muted-foreground hover:text-destructive">
+                          <Button variant="ghost" size="icon" onClick={() => handleDeleteTimeLog(tl.id)} className="text-muted-foreground hover:text-destructive size-5">
                             <Trash2 className="size-3" />
-                          </button>
+                          </Button>
                         </div>
                       ))}
                     </div>
@@ -781,13 +792,14 @@ export default function TaskModal({ taskId, onClose, isSubtask = false, isNew = 
                             return (
                               <div key={subtask.id} className="flex items-center gap-2 group">
                                 <Checkbox checked={subtaskDone} onCheckedChange={() => handleToggleSubtask(subtask)} />
-                                <button
-                                  className="flex-1 text-sm text-left hover:underline truncate"
+                                <Button
+                                  variant="ghost"
+                                  className="flex-1 text-sm text-left hover:underline truncate h-auto px-0 py-0 justify-start"
                                   style={{ textDecoration: subtaskDone ? 'line-through' : undefined, color: subtaskDone ? 'var(--muted-foreground)' : undefined }}
                                   onClick={() => setOpenSubtaskId(subtask.id)}
                                 >
                                   {subtask.title}
-                                </button>
+                                </Button>
                                 <DropdownMenu>
                                   <DropdownMenuTrigger className="opacity-0 group-hover:opacity-100 transition-opacity">
                                     <MoreVertical className="size-3.5 text-muted-foreground" />
@@ -817,9 +829,9 @@ export default function TaskModal({ taskId, onClose, isSubtask = false, isNew = 
                               <Button size="sm" onClick={handleAddSubtask}>Додати</Button>
                             </div>
                           ) : (
-                            <button className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mt-1" onClick={() => setAddingSubtask(true)}>
+                            <Button variant="ghost" className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mt-1 h-auto px-0 py-0" onClick={() => setAddingSubtask(true)}>
                               <Plus className="size-3.5" />Додати підзавдання
-                            </button>
+                            </Button>
                           )}
 
                           {subtasks.length > 0 && (
@@ -861,9 +873,9 @@ export default function TaskModal({ taskId, onClose, isSubtask = false, isNew = 
                               <p className="text-sm">{comment.content}</p>
                               <div className="flex items-center justify-between">
                                 <span className="text-xs text-muted-foreground">{format(new Date(comment.createdAt), 'dd.MM.yyyy HH:mm')}</span>
-                                <button className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity" onClick={() => handleDeleteComment(comment.id)}>
+                                <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity size-5" onClick={() => handleDeleteComment(comment.id)}>
                                   <Trash2 className="size-3" />
-                                </button>
+                                </Button>
                               </div>
                             </div>
                           ))}
@@ -880,18 +892,20 @@ export default function TaskModal({ taskId, onClose, isSubtask = false, isNew = 
                     <p className="text-sm font-semibold mb-1">Закрити завдання?</p>
                     <p className="text-sm text-muted-foreground mb-4">Завдання без назви — зміни не збережуться, якщо ви закриєте його зараз.</p>
                     <div className="flex gap-2 justify-end">
-                      <button
-                        className="px-3 py-1.5 text-sm rounded-lg border border-border hover:bg-muted transition-colors"
+                      <Button
+                        variant="ghost"
+                        className="px-3 py-1.5 text-sm border border-border"
                         onClick={() => setConfirmCloseOpen(false)}
                       >
                         Продовжити редагування
-                      </button>
-                      <button
-                        className="px-3 py-1.5 text-sm rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        className="px-3 py-1.5 text-sm"
                         onClick={handleConfirmDiscard}
                       >
                         Закрити без збереження
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 </div>

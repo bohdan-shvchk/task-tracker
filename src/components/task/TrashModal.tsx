@@ -73,9 +73,9 @@ export default function TrashModal({ projectId, open, onClose, onRestore }: Prop
           <Trash2 className="size-4 text-muted-foreground" />
           <h2 className="font-semibold text-sm flex-1">Кошик</h2>
           <p className="text-xs text-muted-foreground">Задачі видаляються через 30 днів</p>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground ml-2">
+          <Button variant="ghost" size="icon" onClick={onClose} className="text-muted-foreground hover:text-foreground ml-2">
             <X className="size-4" />
-          </button>
+          </Button>
         </div>
 
         {/* Content */}
@@ -103,20 +103,24 @@ export default function TrashModal({ projectId, open, onClose, onRestore }: Prop
                     </p>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
-                    <button
-                      className="p-1.5 rounded-lg hover:bg-background text-muted-foreground hover:text-foreground transition-colors"
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
                       title="Відновити"
                       onClick={() => handleRestore(task.id)}
                     >
                       <RotateCcw className="size-3.5" />
-                    </button>
-                    <button
-                      className="p-1.5 rounded-lg hover:bg-background text-muted-foreground hover:text-destructive transition-colors"
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="p-1.5 text-muted-foreground hover:text-destructive transition-colors"
                       title="Видалити назавжди"
                       onClick={() => handlePermanentDelete(task.id)}
                     >
                       <Trash2 className="size-3.5" />
-                    </button>
+                    </Button>
                   </div>
                 </div>
               ))}

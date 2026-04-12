@@ -11,6 +11,7 @@ import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
 import { ColorPalette } from '@/components/ui/color-palette'
+import { Button } from '@/components/ui/button'
 
 const PRIORITY_COLORS: Record<string, string> = {
   LOW: '#22c55e', MEDIUM: '#eab308', HIGH: '#f97316', URGENT: '#ef4444',
@@ -116,26 +117,29 @@ function TaskRow({ task, statuses, allLabels, onTaskClick, onRefresh, level = 0 
         {/* Name */}
         <div className="py-2.5 flex items-start gap-2 min-w-0 pr-3" style={{ paddingLeft: pl }}>
           {level > 0 ? (
-            <button onClick={handleToggleDone} className="shrink-0 mt-0.5">
+            <Button variant="ghost" size="icon" onClick={handleToggleDone} className="shrink-0 mt-0.5 size-5">
               <div className={cn('w-3.5 h-3.5 rounded border flex items-center justify-center transition-colors', status?.isDone ? 'bg-primary border-primary' : 'border-border hover:border-primary')}>
                 {status?.isDone && <Check className="size-2.5 text-white" />}
               </div>
-            </button>
+            </Button>
           ) : (
-            <button
-              className={cn('mt-0.5 text-muted-foreground hover:text-foreground transition-colors shrink-0', subtasks.length === 0 && 'invisible')}
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn('mt-0.5 text-muted-foreground hover:text-foreground transition-colors shrink-0 size-5', subtasks.length === 0 && 'invisible')}
               onClick={() => setSubtasksExpanded(v => !v)}
             >
               {subtasksExpanded ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
-            </button>
+            </Button>
           )}
           <div className="flex flex-col gap-0.5 min-w-0 flex-1">
-            <button
-              className={cn('text-sm font-medium text-left hover:text-primary transition-colors truncate', level > 0 && status?.isDone && 'line-through opacity-50')}
+            <Button
+              variant="ghost"
+              className={cn('text-sm font-medium text-left hover:text-primary transition-colors truncate h-auto px-0 py-0 justify-start', level > 0 && status?.isDone && 'line-through opacity-50')}
               onClick={() => level > 0 ? setOpenTaskId(task.id) : onTaskClick(task.id)}
             >
               {task.title || <span className="text-muted-foreground italic">Без назви</span>}
-            </button>
+            </Button>
             {(attachCount > 0 || subtasks.length > 0) && (
               <div className="flex items-center gap-2.5 text-xs text-muted-foreground">
                 {attachCount > 0 && <span className="flex items-center gap-0.5"><Paperclip className="size-3" />{attachCount}</span>}
@@ -215,9 +219,9 @@ function TaskRow({ task, statuses, allLabels, onTaskClick, onRefresh, level = 0 
               <Calendar mode="single" selected={deadline} onSelect={date => handleDeadlineChange(date ?? undefined)} />
               {deadline && (
                 <div className="px-2 pb-2 border-t border-border pt-2">
-                  <button className="text-xs text-muted-foreground hover:text-destructive transition-colors" onClick={() => handleDeadlineChange(undefined)}>
+                  <Button variant="ghost" className="text-xs text-muted-foreground hover:text-destructive transition-colors h-auto px-0 py-0" onClick={() => handleDeadlineChange(undefined)}>
                     Очистити дату
-                  </button>
+                  </Button>
                 </div>
               )}
             </PopoverContent>
@@ -249,11 +253,11 @@ function TaskRow({ task, statuses, allLabels, onTaskClick, onRefresh, level = 0 
                   {allLabels.map(label => {
                     const isOn = taskLabels.some(tl => tl.label.id === label.id)
                     return (
-                      <button key={label.id} className="flex items-center gap-2 text-xs hover:bg-muted rounded px-1.5 py-1 transition-colors w-full text-left" onClick={() => toggleLabel(label)}>
+                      <Button key={label.id} variant="ghost" className="flex items-center gap-2 text-xs rounded px-1.5 py-1 w-full h-auto justify-start" onClick={() => toggleLabel(label)}>
                         <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: label.color }} />
                         <span className="flex-1 truncate">{label.name}</span>
                         {isOn && <Check className="size-3 text-primary" />}
-                      </button>
+                      </Button>
                     )
                   })}
                 </div>
@@ -375,20 +379,22 @@ export default function ListView({ tasks, statuses, onTaskClick, onRefresh, onSt
               {showGroupHeaders && (
                 <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border select-none"
                   style={{ backgroundColor: group.color ? `${group.color}26` : 'hsl(var(--muted) / 0.2)' }}>
-                  <button className="text-muted-foreground hover:text-foreground transition-colors" onClick={() => toggleGroup(group.key)}>
+                  <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground transition-colors" onClick={() => toggleGroup(group.key)}>
                     {isCollapsed ? <ChevronRight className="size-4" /> : <ChevronDown className="size-4" />}
-                  </button>
+                  </Button>
 
                   {/* Status color picker */}
                   {groupBy === 'status' && group.color && onStatusColorChange ? (
                     <div className="relative shrink-0">
-                      <button
-                        className="w-3 h-3 rounded-full transition-all"
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="w-3 h-3 rounded-full transition-all p-0 min-w-0"
                         style={{ backgroundColor: group.color }}
-                        onMouseEnter={e => { e.currentTarget.style.boxShadow = `0 0 0 2px white, 0 0 0 3.5px ${group.color}` }}
-                        onMouseLeave={e => { if (openColorPicker !== group.key) e.currentTarget.style.boxShadow = '' }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = `0 0 0 2px white, 0 0 0 3.5px ${group.color}` }}
+                        onMouseLeave={e => { if (openColorPicker !== group.key) (e.currentTarget as HTMLButtonElement).style.boxShadow = '' }}
                         onClick={e => { e.stopPropagation(); setOpenColorPicker(openColorPicker === group.key ? null : group.key) }}
-                      />
+                      ></Button>
                       {openColorPicker === group.key && (
                         <div
                           className="absolute top-5 left-0 z-50 bg-popover border border-border rounded-xl shadow-lg p-2"
@@ -405,7 +411,7 @@ export default function ListView({ tasks, statuses, onTaskClick, onRefresh, onSt
                     </div>
                   ) : null}
 
-                  <button className="flex-1 flex items-center gap-2 text-left" onClick={() => toggleGroup(group.key)}>
+                  <Button variant="ghost" className="flex-1 flex items-center gap-2 text-left h-auto px-0 py-0 justify-start" onClick={() => toggleGroup(group.key)}>
                     {group.color ? (
                       <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full text-white" style={{ backgroundColor: group.color }}>
                         {group.label}
@@ -414,7 +420,7 @@ export default function ListView({ tasks, statuses, onTaskClick, onRefresh, onSt
                       <span className="text-sm font-semibold text-muted-foreground">{group.label}</span>
                     )}
                     <span className="text-xs text-muted-foreground">{group.tasks.length}</span>
-                  </button>
+                  </Button>
                 </div>
               )}
 

@@ -5,6 +5,7 @@ import { Square, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useTimerStore } from '@/store/timer-store'
 import { formatDuration } from '@/lib/format-time'
 import TaskModal from '@/components/task/TaskModal'
+import { Button } from '@/components/ui/button'
 
 export default function GlobalTimerWidget() {
   const { isRunning, currentSeconds, activeTask, activeTimeLog, setActiveTimeLog, setActiveTask, setIsRunning, tick, reset } = useTimerStore()
@@ -63,20 +64,23 @@ export default function GlobalTimerWidget() {
     <>
       <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-white border border-border rounded-2xl shadow-lg px-4 py-2.5">
         {/* Collapse toggle */}
-        <button
+        <Button
+          variant="ghost"
+          size="icon"
           onClick={() => setCollapsed(!collapsed)}
           className="text-muted-foreground hover:text-foreground transition-colors"
         >
           {collapsed ? <ChevronLeft className="size-4" /> : <ChevronRight className="size-4" />}
-        </button>
+        </Button>
 
         {!collapsed && activeTask && (
-          <button
-            className="text-sm text-muted-foreground max-w-[140px] truncate hover:text-foreground hover:underline transition-colors text-left"
+          <Button
+            variant="ghost"
+            className="text-sm text-muted-foreground max-w-[140px] truncate hover:text-foreground hover:underline transition-colors text-left h-auto px-0 py-0 justify-start"
             onClick={() => setOpenTaskId(activeTask.id)}
           >
             {activeTask.title}
-          </button>
+          </Button>
         )}
 
         {/* Time display */}
@@ -85,13 +89,15 @@ export default function GlobalTimerWidget() {
         </span>
 
         {/* Stop */}
-        <button
+        <Button
+          variant="destructive"
+          size="icon"
           onClick={handleStop}
-          className="w-8 h-8 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center transition-colors"
+          className="w-8 h-8 rounded-full bg-red-500 hover:bg-red-600 text-white transition-colors"
           title="Зупинити"
         >
           <Square className="size-3.5" />
-        </button>
+        </Button>
       </div>
 
       {openTaskId && (
