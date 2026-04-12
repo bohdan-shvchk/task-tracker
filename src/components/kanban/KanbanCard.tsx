@@ -7,6 +7,7 @@ import { useTimerStore } from '@/store/timer-store'
 import { formatDuration } from '@/lib/format-time'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/store/app-store'
+import { Button } from '@/components/ui/button'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
 import {
@@ -265,12 +266,9 @@ export default function KanbanCard({ task, onClick, onUpdate, onDelete }: Props)
               />
               {deadline && (
                 <div className="px-2 pb-2 border-t border-border pt-2">
-                  <button
-                    className="text-xs text-muted-foreground hover:text-destructive transition-colors"
-                    onClick={() => handleSetDeadline(undefined)}
-                  >
+                  <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive w-full justify-start h-auto py-1 text-xs" onClick={() => handleSetDeadline(undefined)}>
                     Очистити дату
-                  </button>
+                  </Button>
                 </div>
               )}
             </PopoverContent>
@@ -333,15 +331,16 @@ export default function KanbanCard({ task, onClick, onUpdate, onDelete }: Props)
                   {allLabels.map((label) => {
                     const isOn = taskLabels.some((tl) => tl.label.id === label.id)
                     return (
-                      <button
+                      <Button
                         key={label.id}
-                        className="flex items-center gap-2 text-xs hover:bg-muted rounded px-1.5 py-1 transition-colors w-full text-left"
+                        variant="ghost"
+                        className="flex items-center gap-2 text-xs h-auto py-1 px-1.5 w-full justify-start"
                         onClick={() => toggleLabel(label)}
                       >
                         <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: label.color }} />
                         <span className="flex-1 truncate">{label.name}</span>
                         {isOn && <span className="text-primary text-xs">✓</span>}
-                      </button>
+                      </Button>
                     )
                   })}
                 </div>
@@ -353,27 +352,24 @@ export default function KanbanCard({ task, onClick, onUpdate, onDelete }: Props)
 
           {/* Subtask section */}
           {subtaskCount > 0 || addingSubtask ? (
-            <button
-              className="flex items-center gap-1 hover:text-foreground hover:bg-muted rounded px-1 py-0.5 transition-colors"
-              onClick={(e) => {
-                e.stopPropagation()
-                setSubtasksOpen(!subtasksOpen)
-              }}
+            <Button
+              variant="ghost"
+              className="flex items-center gap-1 h-auto px-1 py-0.5 text-xs"
+              onClick={(e) => { e.stopPropagation(); setSubtasksOpen(!subtasksOpen) }}
             >
               <span className="text-[10px]">{doneSubtasks}/{subtaskCount}</span>
               {subtasksOpen ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
-            </button>
+            </Button>
           ) : (
-            <button
-              className="flex items-center gap-1 rounded px-1 py-0.5 hover:bg-muted hover:text-foreground transition-colors"
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-auto w-auto px-1 py-0.5"
               title="Додати підзадачу"
-              onClick={(e) => {
-                e.stopPropagation()
-                openSubtasks()
-              }}
+              onClick={(e) => { e.stopPropagation(); openSubtasks() }}
             >
               <ListPlus className="size-3.5" />
-            </button>
+            </Button>
           )}
         </div>
 
@@ -385,33 +381,18 @@ export default function KanbanCard({ task, onClick, onUpdate, onDelete }: Props)
           >
             {subtasksState.map((st) => (
               <div key={st.id} className="flex items-center gap-1.5 group/subtask py-0.5">
-                {/* Toggle done checkbox */}
-                <button
-                  className="shrink-0"
-                  onClick={() => handleToggleDone(st)}
-                >
-                  <div
-                    className={cn(
-                      'w-3.5 h-3.5 rounded border flex items-center justify-center transition-colors',
-                      st.status?.isDone
-                        ? 'bg-primary border-primary'
-                        : 'border-border hover:border-primary'
-                    )}
-                  >
+                <Button variant="ghost" size="icon" className="shrink-0 h-auto w-auto p-0" onClick={() => handleToggleDone(st)}>
+                  <div className={cn('w-3.5 h-3.5 rounded border flex items-center justify-center transition-colors', st.status?.isDone ? 'bg-primary border-primary' : 'border-border hover:border-primary')}>
                     {st.status?.isDone && <Check className="size-2.5 text-white" />}
                   </div>
-                </button>
-
-                {/* Subtask title */}
-                <button
-                  className={cn(
-                    'flex-1 text-xs truncate text-muted-foreground text-left hover:text-foreground transition-colors',
-                    st.status?.isDone && 'line-through opacity-50'
-                  )}
+                </Button>
+                <Button
+                  variant="ghost"
+                  className={cn('flex-1 text-xs truncate text-muted-foreground text-left hover:text-foreground h-auto p-0 justify-start', st.status?.isDone && 'line-through opacity-50')}
                   onClick={() => setOpenTaskId(st.id)}
                 >
                   {st.title}
-                </button>
+                </Button>
               </div>
             ))}
 
@@ -430,21 +411,15 @@ export default function KanbanCard({ task, onClick, onUpdate, onDelete }: Props)
                   }}
                   onBlur={() => { if (!newSubtaskTitle.trim()) setAddingSubtask(false) }}
                 />
-                <button
-                  className="text-primary hover:text-primary/80"
-                  onMouseDown={(e) => { e.preventDefault(); handleAddSubtask() }}
-                >
+                <Button variant="ghost" size="icon" className="h-auto w-auto p-0 text-primary hover:text-primary/80" onMouseDown={(e) => { e.preventDefault(); handleAddSubtask() }}>
                   <Check className="size-3.5" />
-                </button>
+                </Button>
               </div>
             ) : (
-              <button
-                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mt-1 py-0.5 transition-colors"
-                onClick={() => setAddingSubtask(true)}
-              >
+              <Button variant="ghost" className="flex items-center gap-1 text-xs text-muted-foreground mt-1 h-auto py-0.5 px-0 justify-start" onClick={() => setAddingSubtask(true)}>
                 <Plus className="size-3" />
                 Додати
-              </button>
+              </Button>
             )}
           </div>
         )}

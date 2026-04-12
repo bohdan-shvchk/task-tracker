@@ -288,12 +288,9 @@ export default function DashboardPage() {
         <div className="w-64 border-l border-border bg-background overflow-y-auto px-4 py-6 shrink-0">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold">Мої проєкти</h2>
-            <button
-              className="w-6 h-6 rounded-md flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-              onClick={() => setShowCreateProject(true)}
-            >
+            <Button variant="ghost" size="icon" onClick={() => setShowCreateProject(true)}>
               <Plus className="size-4" />
-            </button>
+            </Button>
           </div>
 
           {projects.length === 0 ? (
@@ -323,26 +320,17 @@ export default function DashboardPage() {
                     </a>
                     {deletingProjectId === proj.id ? (
                       <div className="flex items-center gap-1 shrink-0">
-                        <button
-                          onClick={() => handleDeleteProject(proj.id)}
-                          className="text-xs text-destructive font-medium hover:underline"
-                        >
-                          Так
-                        </button>
-                        <button
-                          onClick={() => setDeletingProjectId(null)}
-                          className="text-xs text-muted-foreground hover:text-foreground"
-                        >
-                          Ні
-                        </button>
+                        <Button variant="destructive" size="xs" onClick={() => handleDeleteProject(proj.id)}>Так</Button>
+                        <Button variant="ghost" size="xs" onClick={() => setDeletingProjectId(null)}>Ні</Button>
                       </div>
                     ) : (
-                      <button
+                      <Button
+                        variant="ghost" size="icon"
+                        className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive shrink-0"
                         onClick={() => setDeletingProjectId(proj.id)}
-                        className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all shrink-0"
                       >
                         <Trash2 className="size-3.5" />
-                      </button>
+                      </Button>
                     )}
                   </div>
                 )

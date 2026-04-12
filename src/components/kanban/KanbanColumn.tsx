@@ -181,13 +181,14 @@ export default function KanbanColumn({
       </div>
 
       {!addingTask && (
-        <button
-          className="mt-2 flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground px-1 py-1.5 rounded-lg hover:bg-muted transition-colors"
+        <Button
+          variant="ghost"
+          className="mt-2 w-full justify-start gap-1.5 text-sm text-muted-foreground"
           onClick={() => setAddingTask(true)}
         >
           <Plus className="size-4" />
           Додати завдання
-        </button>
+        </Button>
       )}
     </div>
   )

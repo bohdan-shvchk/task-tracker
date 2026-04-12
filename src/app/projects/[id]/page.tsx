@@ -3,6 +3,7 @@
 import { useEffect, useState, use } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Pencil, Check, X, Plus, LayoutDashboard, List, ExternalLink, Trash2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import Sidebar from '@/components/layout/Sidebar'
 import KanbanBoard from '@/components/kanban/KanbanBoard'
 import ListView from '@/components/task/ListView'
@@ -187,9 +188,9 @@ export default function ProjectPage({ params }: Props) {
       <main className="flex-1 min-w-0 overflow-hidden flex flex-col">
         {/* Header */}
         <div className="shrink-0 flex items-center gap-3 px-6 py-4 border-b border-border bg-background">
-          <button onClick={() => router.push('/')} className="text-muted-foreground hover:text-foreground transition-colors">
+          <Button variant="ghost" size="icon" onClick={() => router.push('/')}>
             <ArrowLeft className="size-4" />
-          </button>
+          </Button>
           <div className="relative shrink-0">
             <button
               className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold hover:opacity-80 transition-opacity"
@@ -226,18 +227,19 @@ export default function ProjectPage({ params }: Props) {
                   if (e.key === 'Escape') { setEditingName(false); setNameInput(project.name) }
                 }}
               />
-              <button onClick={handleSaveName} className="text-green-600 hover:text-green-700"><Check className="size-4" /></button>
-              <button onClick={() => { setEditingName(false); setNameInput(project.name) }} className="text-muted-foreground hover:text-foreground"><X className="size-4" /></button>
+              <Button variant="ghost" size="icon" onClick={handleSaveName} className="text-green-600 hover:text-green-700"><Check className="size-4" /></Button>
+              <Button variant="ghost" size="icon" onClick={() => { setEditingName(false); setNameInput(project.name) }}><X className="size-4" /></Button>
             </div>
           ) : (
             <div className="flex items-center gap-2 group">
               <h1 className="text-lg font-bold">{project.name}</h1>
-              <button
-                className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity"
+              <Button
+                variant="ghost" size="icon"
+                className="opacity-0 group-hover:opacity-100"
                 onClick={() => setEditingName(true)}
               >
                 <Pencil className="size-3.5" />
-              </button>
+              </Button>
             </div>
           )}
           <span className="ml-2 text-sm text-muted-foreground">{tasks.length} завдань</span>
@@ -256,69 +258,54 @@ export default function ProjectPage({ params }: Props) {
 
           {/* View tabs */}
           <div className="ml-4 flex items-center gap-0.5 bg-muted rounded-lg p-0.5">
-            <button
+            <Button
+              variant="ghost" size="sm"
               className={cn(
-                'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-colors',
-                view === 'kanban'
-                  ? 'bg-background text-foreground shadow-sm font-medium'
-                  : 'text-muted-foreground hover:text-foreground'
+                'flex items-center gap-1.5',
+                view === 'kanban' ? 'bg-background text-foreground shadow-sm font-medium hover:bg-background' : 'text-muted-foreground'
               )}
               onClick={() => setView('kanban')}
             >
               <LayoutDashboard className="size-3.5" />
               Канбан
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="ghost" size="sm"
               className={cn(
-                'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm transition-colors',
-                view === 'list'
-                  ? 'bg-background text-foreground shadow-sm font-medium'
-                  : 'text-muted-foreground hover:text-foreground'
+                'flex items-center gap-1.5',
+                view === 'list' ? 'bg-background text-foreground shadow-sm font-medium hover:bg-background' : 'text-muted-foreground'
               )}
               onClick={() => { setView('list'); fetchTasks(); fetchProject() }}
             >
               <List className="size-3.5" />
               Список
-            </button>
+            </Button>
           </div>
 
           {deleteConfirm ? (
             <div className="flex items-center gap-2 ml-2">
               <span className="text-sm text-muted-foreground">Видалити проєкт?</span>
-              <button
-                onClick={handleDeleteProject}
-                className="text-sm text-destructive font-medium hover:underline"
-              >
-                Так
-              </button>
-              <button
-                onClick={() => setDeleteConfirm(false)}
-                className="text-sm text-muted-foreground hover:text-foreground"
-              >
-                Ні
-              </button>
+              <Button variant="destructive" size="sm" onClick={handleDeleteProject}>Так</Button>
+              <Button variant="ghost" size="sm" onClick={() => setDeleteConfirm(false)}>Ні</Button>
             </div>
           ) : (
-            <button
-              onClick={() => setDeleteConfirm(true)}
-              className="ml-2 text-muted-foreground hover:text-destructive transition-colors"
+            <Button
+              variant="ghost" size="icon"
+              className="ml-2 text-muted-foreground hover:text-destructive"
               title="Видалити проєкт"
+              onClick={() => setDeleteConfirm(true)}
             >
               <Trash2 className="size-4" />
-            </button>
+            </Button>
           )}
 
           <div className="ml-auto flex items-center gap-2">
             <PomodoroTimer projectId={id} tasks={tasks} statuses={project?.statuses ?? []} />
 
-            {/* New Task button */}
-            <button
-              onClick={handleNewTask}
-              className="flex items-center gap-1.5 bg-primary text-primary-foreground text-sm font-medium px-3 py-1.5 rounded-lg hover:bg-primary/90 transition-colors"
-            >
+            <Button size="sm" onClick={handleNewTask}>
               <Plus className="size-4" />
               Нове завдання
-            </button>
+            </Button>
           </div>
         </div>
 

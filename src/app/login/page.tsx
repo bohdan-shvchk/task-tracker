@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Eye, EyeOff } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -53,27 +54,29 @@ export default function LoginPage() {
               autoFocus
               className="w-full px-4 py-2.5 pr-11 rounded-lg border border-border bg-muted/30 text-sm outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition"
             />
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon"
               onClick={() => setShow((v) => !v)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+              className="absolute right-1 top-1/2 -translate-y-1/2"
               tabIndex={-1}
             >
               {show ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-            </button>
+            </Button>
           </div>
 
           {error && (
             <p className="text-sm text-destructive">{error}</p>
           )}
 
-          <button
+          <Button
             type="submit"
             disabled={loading || !password}
-            className="w-full bg-primary text-primary-foreground text-sm font-medium py-2.5 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
+            className="w-full"
           >
             {loading ? 'Вхід...' : 'Увійти'}
-          </button>
+          </Button>
         </form>
       </div>
     </div>

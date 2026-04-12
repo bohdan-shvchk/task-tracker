@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Home, Clock, Trash2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { useAppStore } from '@/store/app-store'
 import { cn } from '@/lib/utils'
 
@@ -44,13 +45,14 @@ export default function Sidebar() {
             {label}
           </Link>
         ))}
-        <button
+        <Button
+          variant="ghost"
           onClick={() => setTrashOpen(true)}
-          className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm transition-colors text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground w-full text-left"
+          className="flex items-center gap-2.5 px-2.5 py-2 h-auto rounded-lg text-sm text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground w-full justify-start"
         >
           <Trash2 className="size-4 shrink-0" />
           Кошик
-        </button>
+        </Button>
       </nav>
 
       <div className="h-px bg-sidebar-border mb-4" />
