@@ -164,9 +164,9 @@ export default function ProjectPage({ params }: Props) {
     return (
       <div className="flex h-screen overflow-hidden bg-muted/20">
         <Sidebar />
-        <div className="flex-1 flex items-center justify-center">
+        <main className="flex-1 min-w-0 overflow-hidden flex flex-col items-center justify-center">
           <p className="text-muted-foreground">Завантаження...</p>
-        </div>
+        </main>
       </div>
     )
   }
