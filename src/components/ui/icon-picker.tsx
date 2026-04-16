@@ -16,26 +16,35 @@ export const PROJECT_ICONS: Record<string, LucideIcon> = {
 }
 
 interface IconPickerProps {
-  value?: string
+  value?: string | null
   onChange: (icon: string) => void
   onSelect?: () => void
   color?: string
 }
 
-export default function IconPicker({ value, onChange, onSelect, color }: IconPickerProps) {
+export default function IconPicker({ value, onChange, onSelect }: IconPickerProps) {
   return (
-    <div className="grid grid-cols-6 gap-1 p-1">
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 2rem)', gap: '4px', padding: '8px', width: 'max-content' }}>
       {Object.entries(PROJECT_ICONS).map(([name, Icon]) => (
         <button
           key={name}
           onClick={() => { onChange(name); onSelect?.() }}
-          className={cn(
-            'flex items-center justify-center w-8 h-8 rounded-lg transition-colors hover:bg-muted',
-            value === name ? 'ring-2 ring-offset-1 ring-primary' : ''
-          )}
           title={name}
+          style={{
+            width: '2rem',
+            height: '2rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: '6px',
+            border: value === name ? '2px solid #2a6ff3' : '2px solid transparent',
+            background: value === name ? '#2a6ff310' : 'transparent',
+            cursor: 'pointer',
+          }}
+          onMouseEnter={(e) => { if (value !== name) (e.currentTarget as HTMLButtonElement).style.background = '#f4f5f7' }}
+          onMouseLeave={(e) => { if (value !== name) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
         >
-          <Icon className="size-4" style={{ color: value === name ? color : undefined }} />
+          <Icon size={16} />
         </button>
       ))}
     </div>
@@ -44,21 +53,15 @@ export default function IconPicker({ value, onChange, onSelect, color }: IconPic
 
 export function ProjectIcon({ icon, color, size = 'md' }: { icon?: string | null; color: string; size?: 'sm' | 'md' }) {
   const Icon = icon ? PROJECT_ICONS[icon] : null
-  const sizeClass = size === 'sm' ? 'size-3.5' : 'size-4'
-  const containerClass = size === 'sm' ? 'w-6 h-6 rounded-md' : 'w-7 h-7 rounded-lg'
+  const px = size === 'sm' ? 24 : 28
+  const iconSize = size === 'sm' ? 14 : 16
 
   return (
     <div
-      className={cn('flex items-center justify-center shrink-0', containerClass)}
-      style={{ backgroundColor: `${color}20`, border: `1.5px solid ${color}40` }}
+      className={cn('flex items-center justify-center shrink-0', size === 'sm' ? 'rounded-md' : 'rounded-lg')}
+      style={{ width: px, height: px, backgroundColor: `${color}20`, border: `1.5px solid ${color}40` }}
     >
-      {Icon ? (
-        <Icon className={sizeClass} style={{ color }} />
-      ) : (
-        <span className="text-[10px] font-bold" style={{ color }}>
-          {/* fallback: empty, color dot */}
-        </span>
-      )}
+      {Icon && <Icon size={iconSize} style={{ color }} />}
     </div>
   )
 }

@@ -80,7 +80,7 @@ export default function KanbanColumn({
 
   return (
     <div ref={setSortRef} style={style} className="flex flex-col w-72 shrink-0">
-      <div className="rounded-xl overflow-hidden shadow-sm bg-[#f4f5f7]">
+      <div className="rounded-2xl overflow-hidden shadow-sm bg-[#f4f5f7]">
         {/* Colored top bar — also serves as drag handle */}
         <div
           className="h-1 w-full cursor-grab active:cursor-grabbing"

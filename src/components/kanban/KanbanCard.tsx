@@ -166,7 +166,7 @@ export default function KanbanCard({ task, onClick, onUpdate, onDelete }: Props)
 
   return (
     <div
-      className="bg-white rounded-xl shadow-sm border border-border cursor-pointer hover:shadow-md transition-shadow relative overflow-hidden group"
+      className="bg-white rounded-2xl shadow-sm border border-border cursor-pointer hover:shadow-md transition-shadow relative overflow-hidden group"
       onClick={onClick}
     >
       {/* 3-dots context menu */}
@@ -201,11 +201,6 @@ export default function KanbanCard({ task, onClick, onUpdate, onDelete }: Props)
         </div>
       )}
 
-      {/* Priority color bar at top */}
-      {priority && (
-        <div className="h-0.5 w-full" style={{ backgroundColor: PRIORITY_COLORS[priority] }} />
-      )}
-
       <div className="p-3">
         {/* Title */}
         <p className="text-sm font-medium leading-snug mb-2.5 pr-5">{task.title}</p>
@@ -222,7 +217,7 @@ export default function KanbanCard({ task, onClick, onUpdate, onDelete }: Props)
                 className="h-full rounded-full transition-all duration-300"
                 style={{
                   width: `${progressPercent}%`,
-                  backgroundColor: priority ? PRIORITY_COLORS[priority] : '#2a6ff3',
+                  backgroundColor: '#2a6ff3',
                 }}
               />
             </div>
@@ -234,13 +229,8 @@ export default function KanbanCard({ task, onClick, onUpdate, onDelete }: Props)
           <div className="flex flex-wrap items-center gap-1 mb-2.5" onClick={(e) => e.stopPropagation()}>
             {priority && (
               <DropdownMenu>
-                <DropdownMenuTrigger>
-                  <span
-                    className="inline-flex text-[10px] font-bold px-1.5 py-0.5 rounded text-white cursor-pointer"
-                    style={{ backgroundColor: PRIORITY_COLORS[priority] }}
-                  >
+                <DropdownMenuTrigger className="inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded text-white leading-none cursor-pointer" style={{ backgroundColor: PRIORITY_COLORS[priority] }}>
                     {PRIORITY_BADGE[priority]}
-                  </span>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent side="bottom" align="start">
                   {Object.entries(PRIORITY_BADGE).map(([key, label]) => (
@@ -266,13 +256,15 @@ export default function KanbanCard({ task, onClick, onUpdate, onDelete }: Props)
               </DropdownMenu>
             )}
             {taskLabels.map((tl) => (
-              <span
+              <button
                 key={tl.label.id}
-                className="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded-full font-medium text-white"
+                className="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded-full font-medium text-white leading-none cursor-pointer hover:opacity-80 transition-opacity"
                 style={{ backgroundColor: tl.label.color }}
+                onClick={() => toggleLabel(tl.label)}
+                title="Прибрати мітку"
               >
                 {tl.label.name}
-              </span>
+              </button>
             ))}
           </div>
         )}
@@ -342,25 +334,19 @@ export default function KanbanCard({ task, onClick, onUpdate, onDelete }: Props)
 
           <span className="flex-1" />
 
-          {/* Labels toggle */}
-          <Popover onOpenChange={(open) => open && loadLabels()}>
-            <PopoverTrigger
-              className={cn(
-                'flex items-center gap-1 rounded px-1 py-0.5 hover:bg-muted transition-colors',
-                taskLabels.length > 0 ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              <Tag className="size-3 shrink-0" />
-            </PopoverTrigger>
-            <PopoverContent side="bottom" align="end" className="w-44 p-2">
-              <p className="text-xs font-medium text-muted-foreground mb-2">Мітки</p>
-              {allLabels.length === 0 ? (
-                <p className="text-xs text-muted-foreground">Немає міток</p>
-              ) : (
-                <div className="flex flex-col gap-0.5">
-                  {allLabels.map((label) => {
-                    const isOn = taskLabels.some((tl) => tl.label.id === label.id)
-                    return (
+          {/* Add label — only when no labels */}
+          {taskLabels.length === 0 && (
+            <Popover onOpenChange={(open) => open && loadLabels()}>
+              <PopoverTrigger className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full leading-none border border-dashed border-muted-foreground/40 text-muted-foreground hover:border-muted-foreground hover:text-foreground transition-colors">
+                <Tag className="size-2.5 shrink-0" />
+              </PopoverTrigger>
+              <PopoverContent side="bottom" align="end" className="w-44 p-2">
+                <p className="text-xs font-medium text-muted-foreground mb-2">Мітки</p>
+                {allLabels.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">Немає міток</p>
+                ) : (
+                  <div className="flex flex-col gap-0.5">
+                    {allLabels.map((label) => (
                       <Button
                         key={label.id}
                         variant="ghost"
@@ -369,14 +355,13 @@ export default function KanbanCard({ task, onClick, onUpdate, onDelete }: Props)
                       >
                         <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: label.color }} />
                         <span className="flex-1 truncate">{label.name}</span>
-                        {isOn && <span className="text-primary text-xs">✓</span>}
                       </Button>
-                    )
-                  })}
-                </div>
-              )}
-            </PopoverContent>
-          </Popover>
+                    ))}
+                  </div>
+                )}
+              </PopoverContent>
+            </Popover>
+          )}
 
           {/* Subtasks */}
           {subtaskCount > 0 || addingSubtask ? (

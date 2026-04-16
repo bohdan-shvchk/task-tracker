@@ -305,7 +305,7 @@ export default function KanbanBoard({ statuses, tasks, projectId, onTaskClick, o
           {/* Add List column */}
           <div className="shrink-0 w-72">
             {addingStatus ? (
-              <div className="rounded-xl overflow-hidden shadow-sm bg-[#f4f5f7]">
+              <div className="rounded-2xl overflow-hidden shadow-sm bg-[#f4f5f7]">
                 <div className="h-1 w-full bg-border" />
                 <div className="p-3 flex flex-col gap-2">
                   <input
@@ -328,7 +328,7 @@ export default function KanbanBoard({ statuses, tasks, projectId, onTaskClick, o
             ) : (
               <button
                 onClick={() => setAddingStatus(true)}
-                className="w-full rounded-xl border-2 border-dashed border-border hover:border-muted-foreground/40 bg-transparent hover:bg-muted/40 transition-all duration-200 px-3 py-3 flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+                className="w-full rounded-2xl border-2 border-dashed border-border hover:border-muted-foreground/40 bg-transparent hover:bg-muted/40 transition-all duration-200 px-3 py-3 flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
               >
                 <Plus className="size-4 shrink-0" />
                 Add List
