@@ -5,6 +5,8 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  --color-aqua-blue: var(--aqua-blue);
+  --color-neutral-500: var(--neutral-500);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
@@ -49,6 +51,8 @@
 }
 
 :root {
+  --aqua-blue: #2a6ff3;
+  --neutral-500: #757575;
   --background: oklch(1 0 0);
   --foreground: #202020;
   --card: oklch(1 0 0);
@@ -60,7 +64,7 @@
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: #202020;
   --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
+  --muted-foreground: var(--neutral-500);
   --accent: oklch(0.97 0 0);
   --accent-foreground: #202020;
   --destructive: oklch(0.577 0.245 27.325);

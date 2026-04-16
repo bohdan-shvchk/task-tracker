@@ -196,7 +196,7 @@ export default function ProjectPage({ params }: Props) {
       <Sidebar />
       <main className="flex-1 min-w-0 overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="shrink-0 flex items-center gap-3 px-6 py-3 border-b border-border bg-background">
+        <div className="shrink-0 flex items-center gap-3 px-6 py-3 bg-background">
           <Button variant="ghost" size="icon" onClick={() => router.push('/')}>
             <ArrowLeft className="size-4" />
           </Button>
@@ -286,7 +286,11 @@ export default function ProjectPage({ params }: Props) {
 
           <div className="ml-auto flex items-center gap-2">
             <PomodoroTimer projectId={id} tasks={tasks} statuses={project?.statuses ?? []} />
-            <Button size="sm" onClick={handleNewTask}>
+            <Button
+              onClick={handleNewTask}
+              className="flex items-center gap-1.5 px-3 py-1.5 h-auto text-sm font-medium rounded-lg text-white"
+              style={{ backgroundColor: 'var(--aqua-blue)' }}
+            >
               <Plus className="size-4" />
               Нове завдання
             </Button>
@@ -294,7 +298,7 @@ export default function ProjectPage({ params }: Props) {
         </div>
 
         {/* View tabs bar */}
-        <div className="shrink-0 flex items-stretch px-6 border-b border-border bg-background h-11">
+        <div className="shrink-0 flex items-stretch px-6 bg-background h-11">
           {VIEW_TABS.map(({ id: tabId, label, icon: Icon, enabled }) => {
             const isActive = tabId !== null && view === tabId
             return (
@@ -307,13 +311,12 @@ export default function ProjectPage({ params }: Props) {
                 }}
                 className={cn(
                   'flex items-center gap-1.5 px-3 text-sm border-b-2 transition-colors',
-                  isActive
-                    ? 'border-[#2a6ff3] text-[#2a6ff3] font-medium'
-                    : 'border-transparent text-muted-foreground',
-                  enabled ? 'hover:text-foreground cursor-pointer' : 'opacity-40 cursor-not-allowed'
+                  isActive ? 'border-[#2a6ff3] font-medium' : 'border-transparent',
+                  enabled ? 'cursor-pointer' : 'opacity-40 cursor-not-allowed'
                 )}
+                style={{ color: isActive ? 'var(--aqua-blue)' : 'var(--neutral-500)' }}
               >
-                <Icon className="size-3.5 shrink-0" />
+                <Icon className="size-3.5 shrink-0" style={{ color: isActive ? 'var(--aqua-blue)' : 'var(--neutral-500)' }} />
                 {label}
               </button>
             )

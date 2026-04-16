@@ -447,7 +447,7 @@ const [settingsOpen, setSettingsOpen] = useState(false)
         <span className="font-mono">{isIdle ? 'Помодоро' : fmt(secondsLeft)}</span>
       </PopoverTrigger>
 
-      <PopoverContent align="end" className="w-64 p-4">
+      <PopoverContent align="end" className="w-72 p-4">
 
         {/* Mode selector (idle) / Mode badge (running) */}
         {isIdle ? (
@@ -539,12 +539,14 @@ const [settingsOpen, setSettingsOpen] = useState(false)
 
           {isRunning ? (
             <Button onClick={handlePause}
-              className="w-12 h-12 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm">
+              className="w-12 h-12 rounded-full text-white transition-colors shadow-sm"
+              style={{ backgroundColor: 'var(--aqua-blue)' }}>
               <Pause className="size-5" />
             </Button>
           ) : (
             <Button onClick={handleStart}
-              className="w-12 h-12 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm">
+              className="w-12 h-12 rounded-full text-white transition-colors shadow-sm"
+              style={{ backgroundColor: 'var(--aqua-blue)' }}>
               <Play className="size-5 ml-0.5" />
             </Button>
           )}
