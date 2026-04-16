@@ -23,7 +23,7 @@ export default function RootLayout({
   return (
     <html lang="uk" className={`${inter.variable} h-full antialiased`} suppressHydrationWarning>
       <body className="min-h-full flex" suppressHydrationWarning>
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} forcedTheme="light">
           <TooltipProvider>
             {children}
             <GlobalTimerWidget />
