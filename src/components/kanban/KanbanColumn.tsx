@@ -80,7 +80,7 @@ export default function KanbanColumn({
 
   return (
     <div ref={setSortRef} style={style} className="flex flex-col w-72 shrink-0">
-      <div className="rounded-[8px] overflow-hidden shadow-sm bg-white">
+      <div className="rounded-[8px] overflow-hidden shadow-sm bg-[#F7FAFF]">
         {/* Colored top bar — also serves as drag handle */}
         <div
           className="h-1 w-full cursor-grab active:cursor-grabbing"
@@ -106,7 +106,7 @@ export default function KanbanColumn({
           ) : (
             <div className="flex items-center gap-2 min-w-0">
               <span className="text-sm font-semibold text-foreground truncate">{status.name}</span>
-              <span className="text-[11px] text-muted-foreground bg-white border border-border rounded-full px-1.5 py-0.5 shrink-0">
+              <span className="text-[11px] text-muted-foreground bg-[#F7FAFF] border border-border rounded-full px-1.5 py-0.5 shrink-0">
                 {tasks.length}
               </span>
             </div>
@@ -160,7 +160,7 @@ export default function KanbanColumn({
           </SortableContext>
 
           {addingTask && (
-            <div className="flex flex-col gap-1.5 p-2 bg-white rounded-lg border border-border shadow-sm mt-1">
+            <div className="flex flex-col gap-1.5 p-2 bg-[#F7FAFF] rounded-lg border border-border shadow-sm mt-1">
               <input
                 autoFocus
                 className="text-sm bg-transparent outline-none w-full placeholder:text-muted-foreground"
@@ -186,7 +186,7 @@ export default function KanbanColumn({
         {!addingTask && (
           <button
             onClick={() => setAddingTask(true)}
-            className="flex items-center gap-2 px-3 py-2.5 w-full text-sm text-muted-foreground hover:text-foreground hover:bg-white/60 transition-colors"
+            className="flex items-center gap-2 px-3 py-2.5 w-full text-sm text-muted-foreground hover:text-foreground hover:bg-[#F7FAFF]/60 transition-colors"
           >
             <Plus className="size-4" />
             Додати завдання
