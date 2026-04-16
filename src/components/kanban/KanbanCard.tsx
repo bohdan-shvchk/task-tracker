@@ -166,7 +166,7 @@ export default function KanbanCard({ task, onClick, onUpdate, onDelete }: Props)
 
   return (
     <div
-      className="bg-white rounded-2xl shadow-sm border border-border cursor-pointer hover:shadow-md transition-shadow relative overflow-hidden group"
+      className="bg-white rounded-[8px] shadow-sm border border-border cursor-pointer hover:shadow-md transition-shadow relative overflow-hidden group"
       onClick={onClick}
     >
       {/* 3-dots context menu */}
