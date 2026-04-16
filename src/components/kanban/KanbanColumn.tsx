@@ -5,7 +5,7 @@ import { useDroppable } from '@dnd-kit/core'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
-import { Plus, MoreVertical, GripVertical } from 'lucide-react'
+import { Plus, MoreVertical } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -80,116 +80,119 @@ export default function KanbanColumn({
 
   return (
     <div ref={setSortRef} style={style} className="flex flex-col w-72 shrink-0">
-      {/* Column header */}
-      <div className="flex items-center gap-2 mb-3 px-1">
-        {/* Drag handle */}
-        <button
-          className="text-muted-foreground/50 hover:text-muted-foreground cursor-grab active:cursor-grabbing touch-none"
+      <div className="rounded-xl overflow-hidden shadow-sm bg-[#f4f5f7]">
+        {/* Colored top bar — also serves as drag handle */}
+        <div
+          className="h-1 w-full cursor-grab active:cursor-grabbing"
+          style={{ backgroundColor: status.color }}
           {...attributes}
           {...listeners}
-        >
-          <GripVertical className="size-4" />
-        </button>
+        />
 
-        <div className="relative shrink-0">
-          <button
-            className="w-2.5 h-2.5 rounded-full block transition-all"
-            style={{ backgroundColor: status.color, boxShadow: colorPickerOpen ? `0 0 0 2px white, 0 0 0 3px ${status.color}` : undefined }}
-            onMouseEnter={(e) => { if (!colorPickerOpen) e.currentTarget.style.boxShadow = `0 0 0 2px white, 0 0 0 3px ${status.color}` }}
-            onMouseLeave={(e) => { if (!colorPickerOpen) e.currentTarget.style.boxShadow = '' }}
-            onClick={() => setColorPickerOpen((v) => !v)}
-            title="Змінити колір"
-          />
-          {colorPickerOpen && (
-            <div className="absolute top-5 left-0 z-50 bg-popover border border-border rounded-xl shadow-lg p-2" style={{ minWidth: 220 }} onClick={(e) => e.stopPropagation()}>
-              <ColorPalette
-                value={status.color}
-                onChange={(c) => onChangeStatusColor(status.id, c)}
-                onSelect={() => setColorPickerOpen(false)}
+        {/* Column header */}
+        <div className="flex items-center justify-between px-3 pt-3 pb-2">
+          {renaming ? (
+            <input
+              autoFocus
+              className="flex-1 text-sm font-semibold bg-transparent border-b border-border outline-none mr-2"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              onBlur={handleRenameSubmit}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleRenameSubmit()
+                if (e.key === 'Escape') { setRenaming(false); setNewName(status.name) }
+              }}
+            />
+          ) : (
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-sm font-semibold text-foreground truncate">{status.name}</span>
+              <span className="text-[11px] text-muted-foreground bg-white border border-border rounded-full px-1.5 py-0.5 shrink-0">
+                {tasks.length}
+              </span>
+            </div>
+          )}
+
+          <DropdownMenu>
+            <DropdownMenuTrigger className="text-muted-foreground hover:text-foreground transition-colors p-0.5 rounded shrink-0 ml-1">
+              <MoreVertical className="size-4" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => { setRenaming(true); setNewName(status.name) }}>
+                Перейменувати
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setColorPickerOpen((v) => !v)}>
+                Змінити колір
+              </DropdownMenuItem>
+              <DropdownMenuItem className="text-destructive" onClick={() => onDeleteStatus(status.id)}>
+                Видалити
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        {/* Color picker */}
+        {colorPickerOpen && (
+          <div className="px-3 pb-2" onClick={(e) => e.stopPropagation()}>
+            <ColorPalette
+              value={status.color}
+              onChange={(c) => onChangeStatusColor(status.id, c)}
+              onSelect={() => setColorPickerOpen(false)}
+            />
+          </div>
+        )}
+
+        {/* Droppable cards zone */}
+        <div
+          ref={setDropRef}
+          className="flex flex-col gap-2 px-2 pb-2 overflow-y-auto min-h-[80px] max-h-[calc(100vh-220px)] transition-colors"
+          style={{ backgroundColor: isOver ? `${status.color}18` : 'transparent' }}
+        >
+          <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+            {tasks.map((task) => (
+              <SortableKanbanCard
+                key={task.id}
+                task={task}
+                onClick={() => onTaskClick(task.id)}
+                onUpdate={(updates) => onUpdateTask?.(task.id, updates)}
+                onDelete={() => onDeleteTask?.(task.id)}
               />
+            ))}
+          </SortableContext>
+
+          {addingTask && (
+            <div className="flex flex-col gap-1.5 p-2 bg-white rounded-lg border border-border shadow-sm mt-1">
+              <input
+                autoFocus
+                className="text-sm bg-transparent outline-none w-full placeholder:text-muted-foreground"
+                placeholder="Назва завдання..."
+                value={newTaskTitle}
+                onChange={(e) => setNewTaskTitle(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleAddTask()
+                  if (e.key === 'Escape') { setAddingTask(false); setNewTaskTitle('') }
+                }}
+              />
+              <div className="flex gap-1.5">
+                <Button size="sm" className="h-7 text-xs" onClick={handleAddTask}>Додати</Button>
+                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { setAddingTask(false); setNewTaskTitle('') }}>
+                  Скасувати
+                </Button>
+              </div>
             </div>
           )}
         </div>
 
-        {renaming ? (
-          <input
-            autoFocus
-            className="flex-1 text-sm font-medium bg-transparent border-b border-border outline-none"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            onBlur={handleRenameSubmit}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleRenameSubmit()
-              if (e.key === 'Escape') { setRenaming(false); setNewName(status.name) }
-            }}
-          />
-        ) : (
-          <span className="flex-1 text-sm font-semibold">{status.name}</span>
-        )}
-
-        <span className="text-xs text-muted-foreground bg-muted rounded-full px-1.5 py-0.5">{tasks.length}</span>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger className="text-muted-foreground hover:text-foreground transition-colors p-0.5 rounded">
-            <MoreVertical className="size-4" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuItem onClick={() => { setRenaming(true); setNewName(status.name) }}>
-              Перейменувати
-            </DropdownMenuItem>
-            <DropdownMenuItem className="text-destructive" onClick={() => onDeleteStatus(status.id)}>
-              Видалити
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-
-      {/* Droppable zone */}
-      <div
-        ref={setDropRef}
-        className="flex flex-col gap-2 overflow-y-auto min-h-[80px] max-h-[calc(100vh-180px)] p-2 rounded-xl transition-colors"
-        style={{ backgroundColor: isOver ? `${status.color}30` : `${status.color}12` }}
-      >
-        <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
-          {tasks.map((task) => (
-            <SortableKanbanCard key={task.id} task={task} onClick={() => onTaskClick(task.id)} onUpdate={(updates) => onUpdateTask?.(task.id, updates)} onDelete={() => onDeleteTask?.(task.id)} />
-          ))}
-        </SortableContext>
-
-        {/* Inline add form */}
-        {addingTask && (
-          <div className="flex flex-col gap-1.5 p-2 bg-background rounded-lg border border-border shadow-sm mt-1">
-            <input
-              autoFocus
-              className="text-sm bg-transparent outline-none w-full placeholder:text-muted-foreground"
-              placeholder="Назва завдання..."
-              value={newTaskTitle}
-              onChange={(e) => setNewTaskTitle(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleAddTask()
-                if (e.key === 'Escape') { setAddingTask(false); setNewTaskTitle('') }
-              }}
-            />
-            <div className="flex gap-1.5">
-              <Button size="sm" className="h-7 text-xs" onClick={handleAddTask}>Додати</Button>
-              <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { setAddingTask(false); setNewTaskTitle('') }}>
-                Скасувати
-              </Button>
-            </div>
-          </div>
+        {/* Add task button */}
+        {!addingTask && (
+          <button
+            onClick={() => setAddingTask(true)}
+            className="flex items-center gap-2 px-3 py-2.5 w-full text-sm text-muted-foreground hover:text-foreground hover:bg-white/60 transition-colors"
+          >
+            <Plus className="size-4" />
+            Додати завдання
+          </button>
         )}
       </div>
-
-      {!addingTask && (
-        <Button
-          variant="ghost"
-          className="mt-2 w-full justify-start gap-1.5 text-sm text-muted-foreground"
-          onClick={() => setAddingTask(true)}
-        >
-          <Plus className="size-4" />
-          Додати завдання
-        </Button>
-      )}
     </div>
   )
 }

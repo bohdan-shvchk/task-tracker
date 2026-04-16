@@ -2,7 +2,7 @@
 
 import { useEffect, useState, use } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Pencil, Check, X, Plus, LayoutDashboard, List, ExternalLink, Trash2 } from 'lucide-react'
+import { ArrowLeft, Pencil, Check, X, Plus, LayoutDashboard, Table2, GanttChart, Network, Archive, ExternalLink, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import Sidebar from '@/components/layout/Sidebar'
 import KanbanBoard from '@/components/kanban/KanbanBoard'
@@ -12,14 +12,22 @@ import TrashModal from '@/components/task/TrashModal'
 import PomodoroTimer from '@/components/pomodoro/PomodoroTimer'
 import { useAppStore } from '@/store/app-store'
 import { Project, Task } from '@/lib/types'
-import { ColorPalette } from '@/components/ui/color-palette'
 import { cn } from '@/lib/utils'
+import IconPicker, { ProjectIcon } from '@/components/ui/icon-picker'
 
 interface Props {
   params: Promise<{ id: string }>
 }
 
 type View = 'kanban' | 'list'
+
+const VIEW_TABS = [
+  { id: 'kanban' as View, label: 'Kanban', icon: LayoutDashboard, enabled: true },
+  { id: 'list' as View, label: 'Table', icon: Table2, enabled: true },
+  { id: null, label: 'Timeline', icon: GanttChart, enabled: false },
+  { id: null, label: 'Galaxy View', icon: Network, enabled: false },
+  { id: null, label: 'Archive', icon: Archive, enabled: false },
+]
 
 export default function ProjectPage({ params }: Props) {
   const { id } = use(params)
@@ -30,7 +38,7 @@ export default function ProjectPage({ params }: Props) {
   const [loading, setLoading] = useState(true)
   const [editingName, setEditingName] = useState(false)
   const [nameInput, setNameInput] = useState('')
-  const [colorPickerOpen, setColorPickerOpen] = useState(false)
+  const [iconPickerOpen, setIconPickerOpen] = useState(false)
   const [view, setView] = useState<View>('kanban')
 
   const [isNewTask, setIsNewTask] = useState(false)
@@ -145,14 +153,15 @@ export default function ProjectPage({ params }: Props) {
     setEditingName(false)
   }
 
-  const handleColorChange = async (color: string) => {
+  const handleIconChange = async (icon: string) => {
     if (!project) return
-    setProject((p) => p ? { ...p, color } : p)
+    setProject((p) => p ? { ...p, icon } : p)
+    setIconPickerOpen(false)
     try {
       await fetch(`/api/projects/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ color }),
+        body: JSON.stringify({ icon }),
       })
       fetchProjects()
     } catch (e) { console.error(e) }
@@ -187,29 +196,29 @@ export default function ProjectPage({ params }: Props) {
       <Sidebar />
       <main className="flex-1 min-w-0 overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="shrink-0 flex items-center gap-3 px-6 py-4 border-b border-border bg-background">
+        <div className="shrink-0 flex items-center gap-3 px-6 py-3 border-b border-border bg-background">
           <Button variant="ghost" size="icon" onClick={() => router.push('/')}>
             <ArrowLeft className="size-4" />
           </Button>
+
+          {/* Icon picker */}
           <div className="relative shrink-0">
             <button
-              className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold hover:opacity-80 transition-opacity"
-              style={{ backgroundColor: project.color }}
-              onClick={() => setColorPickerOpen((v) => !v)}
-              title="Змінити колір проєкту"
+              onClick={() => setIconPickerOpen((v) => !v)}
+              title="Змінити іконку проєкту"
+              className="hover:opacity-80 transition-opacity"
             >
-              {project.name.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()}
+              <ProjectIcon icon={project.icon} color={project.color} size="md" />
             </button>
-            {colorPickerOpen && (
+            {iconPickerOpen && (
               <div
-                className="absolute top-9 left-0 z-50 bg-popover border border-border rounded-xl shadow-lg p-2"
-                style={{ minWidth: 220 }}
+                className="absolute top-10 left-0 z-50 bg-popover border border-border rounded-xl shadow-lg"
                 onClick={(e) => e.stopPropagation()}
               >
-                <ColorPalette
-                  value={project.color}
-                  onChange={handleColorChange}
-                  onSelect={() => setColorPickerOpen(false)}
+                <IconPicker
+                  value={project.icon}
+                  onChange={handleIconChange}
+                  color={project.color}
                 />
               </div>
             )}
@@ -219,7 +228,7 @@ export default function ProjectPage({ params }: Props) {
             <div className="flex items-center gap-2">
               <input
                 autoFocus
-                className="text-lg font-bold bg-transparent outline-none border-b-2 border-primary"
+                className="text-2xl font-bold bg-transparent outline-none border-b-2 border-primary"
                 value={nameInput}
                 onChange={(e) => setNameInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -232,7 +241,7 @@ export default function ProjectPage({ params }: Props) {
             </div>
           ) : (
             <div className="flex items-center gap-2 group">
-              <h1 className="text-lg font-bold">{project.name}</h1>
+              <h1 className="text-2xl font-bold">{project.name}</h1>
               <Button
                 variant="ghost" size="icon"
                 className="opacity-0 group-hover:opacity-100"
@@ -242,7 +251,9 @@ export default function ProjectPage({ params }: Props) {
               </Button>
             </div>
           )}
-          <span className="ml-2 text-sm text-muted-foreground">{tasks.length} завдань</span>
+
+          <span className="text-sm text-muted-foreground">{tasks.length} завдань</span>
+
           {project.url && (
             <a
               href={project.url}
@@ -256,32 +267,6 @@ export default function ProjectPage({ params }: Props) {
             </a>
           )}
 
-          {/* View tabs */}
-          <div className="ml-4 flex items-center gap-0.5 bg-muted rounded-lg p-0.5">
-            <Button
-              variant="ghost" size="sm"
-              className={cn(
-                'flex items-center gap-1.5',
-                view === 'kanban' ? 'bg-background text-foreground shadow-sm font-medium hover:bg-background' : 'text-muted-foreground'
-              )}
-              onClick={() => setView('kanban')}
-            >
-              <LayoutDashboard className="size-3.5" />
-              Канбан
-            </Button>
-            <Button
-              variant="ghost" size="sm"
-              className={cn(
-                'flex items-center gap-1.5',
-                view === 'list' ? 'bg-background text-foreground shadow-sm font-medium hover:bg-background' : 'text-muted-foreground'
-              )}
-              onClick={() => { setView('list'); fetchTasks(); fetchProject() }}
-            >
-              <List className="size-3.5" />
-              Список
-            </Button>
-          </div>
-
           {deleteConfirm ? (
             <div className="flex items-center gap-2 ml-2">
               <span className="text-sm text-muted-foreground">Видалити проєкт?</span>
@@ -291,7 +276,7 @@ export default function ProjectPage({ params }: Props) {
           ) : (
             <Button
               variant="ghost" size="icon"
-              className="ml-2 text-muted-foreground hover:text-destructive"
+              className="text-muted-foreground hover:text-destructive"
               title="Видалити проєкт"
               onClick={() => setDeleteConfirm(true)}
             >
@@ -301,12 +286,38 @@ export default function ProjectPage({ params }: Props) {
 
           <div className="ml-auto flex items-center gap-2">
             <PomodoroTimer projectId={id} tasks={tasks} statuses={project?.statuses ?? []} />
-
             <Button size="sm" onClick={handleNewTask}>
               <Plus className="size-4" />
               Нове завдання
             </Button>
           </div>
+        </div>
+
+        {/* View tabs bar */}
+        <div className="shrink-0 flex items-stretch px-6 border-b border-border bg-background h-11">
+          {VIEW_TABS.map(({ id: tabId, label, icon: Icon, enabled }) => {
+            const isActive = tabId !== null && view === tabId
+            return (
+              <button
+                key={label}
+                disabled={!enabled}
+                onClick={() => {
+                  if (tabId === 'list') { setView('list'); fetchTasks(); fetchProject() }
+                  else if (tabId) setView(tabId)
+                }}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 text-sm border-b-2 transition-colors',
+                  isActive
+                    ? 'border-[#2a6ff3] text-[#2a6ff3] font-medium'
+                    : 'border-transparent text-muted-foreground',
+                  enabled ? 'hover:text-foreground cursor-pointer' : 'opacity-40 cursor-not-allowed'
+                )}
+              >
+                <Icon className="size-3.5 shrink-0" />
+                {label}
+              </button>
+            )
+          })}
         </div>
 
         <div className={cn(

@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
           orderBy: { order: 'asc' },
         },
         _count: {
-          select: { subtasks: true, attachments: true },
+          select: { subtasks: true, attachments: true, comments: true },
         },
       },
       orderBy: { order: "asc" },

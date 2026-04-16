@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Paperclip, ChevronDown, ChevronUp, CalendarIcon, Flag, Tag, MoreVertical, Trash2, ListPlus, Plus, Check } from 'lucide-react'
+import { Paperclip, ChevronDown, ChevronUp, CalendarIcon, Tag, MoreVertical, Trash2, ListPlus, Plus, Check, MessageSquare } from 'lucide-react'
 import { Task, Label } from '@/lib/types'
 import { useTimerStore } from '@/store/timer-store'
 import { formatDuration } from '@/lib/format-time'
@@ -25,11 +25,11 @@ const PRIORITY_COLORS: Record<string, string> = {
   URGENT: '#ef4444',
 }
 
-const PRIORITY_LABELS: Record<string, string> = {
-  LOW: 'Низький',
-  MEDIUM: 'Середній',
-  HIGH: 'Високий',
-  URGENT: 'Критичний',
+const PRIORITY_BADGE: Record<string, string> = {
+  LOW: 'P4',
+  MEDIUM: 'P3',
+  HIGH: 'P2',
+  URGENT: 'P1',
 }
 
 interface Props {
@@ -57,9 +57,11 @@ export default function KanbanCard({ task, onClick, onUpdate, onDelete }: Props)
 
   const isTimingThis = isRunning && activeTask?.id === task.id
   const attachCount = task._count?.attachments ?? task.attachments?.length ?? 0
+  const commentCount = task._count?.comments ?? task.comments?.length ?? 0
 
   const doneSubtasks = subtasksState.filter((s) => s.status?.isDone === true).length
   const subtaskCount = subtasksState.length
+  const progressPercent = subtaskCount > 0 ? Math.round((doneSubtasks / subtaskCount) * 100) : 0
 
   const now = new Date()
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
@@ -167,8 +169,7 @@ export default function KanbanCard({ task, onClick, onUpdate, onDelete }: Props)
       className="bg-white rounded-xl shadow-sm border border-border cursor-pointer hover:shadow-md transition-shadow relative overflow-hidden group"
       onClick={onClick}
     >
-
-      {/* 3-dots context menu — top right, visible on hover */}
+      {/* 3-dots context menu */}
       <div
         className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10"
         onClick={(e) => e.stopPropagation()}
@@ -200,13 +201,70 @@ export default function KanbanCard({ task, onClick, onUpdate, onDelete }: Props)
         </div>
       )}
 
+      {/* Priority color bar at top */}
+      {priority && (
+        <div className="h-0.5 w-full" style={{ backgroundColor: PRIORITY_COLORS[priority] }} />
+      )}
+
       <div className="p-3">
         {/* Title */}
-        <p className="text-sm font-medium leading-snug mb-2 pr-5">{task.title}</p>
+        <p className="text-sm font-medium leading-snug mb-2.5 pr-5">{task.title}</p>
 
-        {/* Labels row */}
-        {taskLabels.length > 0 && (
-          <div className="flex flex-wrap gap-1 mb-2">
+        {/* Progress bar */}
+        {subtaskCount > 0 && (
+          <div className="mb-2.5">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[10px] text-muted-foreground font-medium">{progressPercent}%</span>
+              <span className="text-[10px] text-muted-foreground">{doneSubtasks}/{subtaskCount}</span>
+            </div>
+            <div className="h-1 rounded-full bg-muted overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-300"
+                style={{
+                  width: `${progressPercent}%`,
+                  backgroundColor: priority ? PRIORITY_COLORS[priority] : '#2a6ff3',
+                }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Badges: priority + labels */}
+        {(priority || taskLabels.length > 0) && (
+          <div className="flex flex-wrap items-center gap-1 mb-2.5" onClick={(e) => e.stopPropagation()}>
+            {priority && (
+              <DropdownMenu>
+                <DropdownMenuTrigger>
+                  <span
+                    className="inline-flex text-[10px] font-bold px-1.5 py-0.5 rounded text-white cursor-pointer"
+                    style={{ backgroundColor: PRIORITY_COLORS[priority] }}
+                  >
+                    {PRIORITY_BADGE[priority]}
+                  </span>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent side="bottom" align="start">
+                  {Object.entries(PRIORITY_BADGE).map(([key, label]) => (
+                    <DropdownMenuItem
+                      key={key}
+                      onClick={() => handleSetPriority(key)}
+                      className="flex items-center gap-2"
+                    >
+                      <span
+                        className="inline-flex text-[10px] font-bold px-1.5 py-0.5 rounded text-white"
+                        style={{ backgroundColor: PRIORITY_COLORS[key] }}
+                      >
+                        {label}
+                      </span>
+                      {key === 'URGENT' ? 'Критичний' : key === 'HIGH' ? 'Високий' : key === 'MEDIUM' ? 'Середній' : 'Низький'}
+                    </DropdownMenuItem>
+                  ))}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => handleSetPriority(null)} className="text-muted-foreground">
+                    Очистити
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
             {taskLabels.map((tl) => (
               <span
                 key={tl.label.id}
@@ -224,22 +282,7 @@ export default function KanbanCard({ task, onClick, onUpdate, onDelete }: Props)
           className="flex items-center gap-1 text-xs text-muted-foreground"
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Estimated pomodoros */}
-          {task.estimatedPomodoros != null && task.estimatedPomodoros > 0 && (
-            <span className="flex items-center gap-0.5 px-1 py-0.5">
-              <span className="text-[10px]">🍅 {task.estimatedPomodoros}</span>
-            </span>
-          )}
-
-          {/* Attachment count */}
-          {attachCount > 0 && (
-            <span className="flex items-center gap-0.5 px-1 py-0.5">
-              <Paperclip className="size-3 shrink-0" />
-              <span className="text-[10px]">{attachCount}</span>
-            </span>
-          )}
-
-          {/* Due date */}
+          {/* Deadline */}
           <Popover>
             <PopoverTrigger
               className={cn(
@@ -274,42 +317,30 @@ export default function KanbanCard({ task, onClick, onUpdate, onDelete }: Props)
             </PopoverContent>
           </Popover>
 
-          {/* Priority */}
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              className={cn(
-                'flex items-center gap-1 rounded px-1 py-0.5 hover:bg-muted transition-colors',
-                priority ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              <Flag
-                className="size-3 shrink-0"
-                style={{ color: priority ? PRIORITY_COLORS[priority] : undefined }}
-                fill={priority ? PRIORITY_COLORS[priority] : 'none'}
-              />
-              {priority && <span className="text-[10px]">{PRIORITY_LABELS[priority]}</span>}
-            </DropdownMenuTrigger>
-            <DropdownMenuContent side="bottom" align="start">
-              {Object.entries(PRIORITY_LABELS).map(([key, label]) => (
-                <DropdownMenuItem
-                  key={key}
-                  onClick={() => handleSetPriority(key)}
-                  className="flex items-center gap-2"
-                >
-                  <Flag className="size-3" style={{ color: PRIORITY_COLORS[key] }} fill={PRIORITY_COLORS[key]} />
-                  {label}
-                </DropdownMenuItem>
-              ))}
-              {priority && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => handleSetPriority(null)} className="text-muted-foreground">
-                    Очистити
-                  </DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {/* Comments */}
+          {commentCount > 0 && (
+            <span className="flex items-center gap-0.5 px-1 py-0.5">
+              <MessageSquare className="size-3 shrink-0" />
+              <span className="text-[10px]">{commentCount}</span>
+            </span>
+          )}
+
+          {/* Attachments */}
+          {attachCount > 0 && (
+            <span className="flex items-center gap-0.5 px-1 py-0.5">
+              <Paperclip className="size-3 shrink-0" />
+              <span className="text-[10px]">{attachCount}</span>
+            </span>
+          )}
+
+          {/* Pomodoros */}
+          {task.estimatedPomodoros != null && task.estimatedPomodoros > 0 && (
+            <span className="flex items-center gap-0.5 px-1 py-0.5">
+              <span className="text-[10px]">🍅 {task.estimatedPomodoros}</span>
+            </span>
+          )}
+
+          <span className="flex-1" />
 
           {/* Labels toggle */}
           <Popover onOpenChange={(open) => open && loadLabels()}>
@@ -320,9 +351,8 @@ export default function KanbanCard({ task, onClick, onUpdate, onDelete }: Props)
               )}
             >
               <Tag className="size-3 shrink-0" />
-              {taskLabels.length > 0 && <span className="text-[10px]">{taskLabels.length}</span>}
             </PopoverTrigger>
-            <PopoverContent side="bottom" align="start" className="w-44 p-2">
+            <PopoverContent side="bottom" align="end" className="w-44 p-2">
               <p className="text-xs font-medium text-muted-foreground mb-2">Мітки</p>
               {allLabels.length === 0 ? (
                 <p className="text-xs text-muted-foreground">Немає міток</p>
@@ -348,16 +378,13 @@ export default function KanbanCard({ task, onClick, onUpdate, onDelete }: Props)
             </PopoverContent>
           </Popover>
 
-          <span className="flex-1" />
-
-          {/* Subtask section */}
+          {/* Subtasks */}
           {subtaskCount > 0 || addingSubtask ? (
             <Button
               variant="ghost"
               className="flex items-center gap-1 h-auto px-1 py-0.5 text-xs"
               onClick={(e) => { e.stopPropagation(); setSubtasksOpen(!subtasksOpen) }}
             >
-              <span className="text-[10px]">{doneSubtasks}/{subtaskCount}</span>
               {subtasksOpen ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
             </Button>
           ) : (
@@ -396,7 +423,6 @@ export default function KanbanCard({ task, onClick, onUpdate, onDelete }: Props)
               </div>
             ))}
 
-            {/* Inline add subtask */}
             {addingSubtask ? (
               <div className="flex items-center gap-1 mt-1 pt-1 border-t border-border">
                 <input
@@ -424,19 +450,6 @@ export default function KanbanCard({ task, onClick, onUpdate, onDelete }: Props)
           </div>
         )}
       </div>
-
-      {/* Progress bar */}
-      {subtaskCount > 0 && subtasksState.length > 0 && (
-        <div className="flex gap-px overflow-hidden rounded-b-xl">
-          {subtasksState.map((st) => (
-            <div
-              key={st.id}
-              className="h-1 flex-1 transition-colors duration-300"
-              style={{ backgroundColor: st.status?.isDone ? '#fad000' : '#e2e8f0' }}
-            />
-          ))}
-        </div>
-      )}
     </div>
   )
 }

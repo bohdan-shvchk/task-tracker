@@ -302,35 +302,36 @@ export default function KanbanBoard({ statuses, tasks, projectId, onTaskClick, o
             />
           ))}
 
-          {/* Add column */}
-          <div className="shrink-0 mt-8 h-fit">
+          {/* Add List column */}
+          <div className="shrink-0 w-72">
             {addingStatus ? (
-              <div className="flex flex-col gap-2 p-3 border-2 border-border rounded-xl bg-background">
-                <input
-                  autoFocus
-                  className="text-sm bg-transparent outline-none w-full placeholder:text-muted-foreground border-b border-border pb-1"
-                  placeholder="Назва колонки..."
-                  value={newStatusName}
-                  onChange={(e) => setNewStatusName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleAddStatus()
-                    if (e.key === 'Escape') { setAddingStatus(false); setNewStatusName('') }
-                  }}
-                />
-                <div className="flex gap-1.5">
-                  <Button size="sm" className="h-7 text-xs flex-1" onClick={handleAddStatus}>Додати</Button>
-                  <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { setAddingStatus(false); setNewStatusName('') }}>✕</Button>
+              <div className="rounded-xl overflow-hidden shadow-sm bg-[#f4f5f7]">
+                <div className="h-1 w-full bg-border" />
+                <div className="p-3 flex flex-col gap-2">
+                  <input
+                    autoFocus
+                    className="text-sm bg-transparent outline-none w-full placeholder:text-muted-foreground border-b border-border pb-1"
+                    placeholder="Назва колонки..."
+                    value={newStatusName}
+                    onChange={(e) => setNewStatusName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleAddStatus()
+                      if (e.key === 'Escape') { setAddingStatus(false); setNewStatusName('') }
+                    }}
+                  />
+                  <div className="flex gap-1.5">
+                    <Button size="sm" className="h-7 text-xs flex-1" onClick={handleAddStatus}>Додати</Button>
+                    <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { setAddingStatus(false); setNewStatusName('') }}>✕</Button>
+                  </div>
                 </div>
               </div>
             ) : (
               <button
                 onClick={() => setAddingStatus(true)}
-                className="group flex items-center gap-0 hover:gap-2 text-sm text-muted-foreground border-2 border-dashed border-border rounded-xl p-2.5 hover:px-3 hover:border-foreground/30 hover:text-foreground transition-all duration-200 w-fit"
+                className="w-full rounded-xl border-2 border-dashed border-border hover:border-muted-foreground/40 bg-transparent hover:bg-muted/40 transition-all duration-200 px-3 py-3 flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
               >
                 <Plus className="size-4 shrink-0" />
-                <span className="max-w-0 overflow-hidden whitespace-nowrap group-hover:max-w-[120px] transition-all duration-200 ease-in-out">
-                  Додати статус
-                </span>
+                Add List
               </button>
             )}
           </div>

@@ -6,6 +6,7 @@ import { Home, Clock, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAppStore } from '@/store/app-store'
 import { cn } from '@/lib/utils'
+import { ProjectIcon } from '@/components/ui/icon-picker'
 
 export default function Sidebar() {
   const pathname = usePathname()
@@ -64,7 +65,6 @@ export default function Sidebar() {
         </p>
         <div className="flex flex-col gap-1">
           {projects.map((project) => {
-            const initials = project.name.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()
             const isActive = pathname === `/projects/${project.id}`
             return (
               <Link
@@ -77,12 +77,7 @@ export default function Sidebar() {
                     : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
                 )}
               >
-                <div
-                  className="w-6 h-6 rounded-md flex items-center justify-center text-white text-xs font-bold shrink-0"
-                  style={{ backgroundColor: project.color }}
-                >
-                  {initials}
-                </div>
+                <ProjectIcon icon={project.icon} color={project.color} size="sm" />
                 <span className="truncate">{project.name}</span>
                 {project._count && (
                   <span className="ml-auto text-xs text-muted-foreground">{project._count.tasks}</span>
