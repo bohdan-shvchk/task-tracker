@@ -184,7 +184,7 @@ export default function AnalyticsPage() {
   const completionPct = s.total > 0 ? Math.round((s.completed / s.total) * 100) : 0
 
   // Group recent tasks by month
-  const tasksByMonth: Record<string, typeof data.recentTasks> = {}
+  const tasksByMonth: Record<string, NonNullable<typeof data>['recentTasks']> = {}
   ;(data?.recentTasks ?? []).forEach((t) => {
     const key = format(new Date(t.createdAt), 'MMMM yyyy', { locale: uk })
     if (!tasksByMonth[key]) tasksByMonth[key] = []
