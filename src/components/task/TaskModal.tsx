@@ -5,20 +5,19 @@ import dynamic from 'next/dynamic'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { Checkbox } from '@/components/ui/checkbox'
 
 const RichTextEditor = dynamic(() => import('@/components/ui/rich-text-editor'), {
   ssr: false,
   loading: () => <div className="h-32 rounded-lg border border-border bg-muted/20 animate-pulse" />,
 })
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
-import { Calendar } from '@/components/ui/calendar'
+import { DateRangePicker } from '@/components/ui/date-range-picker'
+import type { DateRange } from '@/components/ui/date-range-picker'
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
 } from '@/components/ui/dropdown-menu'
 import {
-  Paperclip, Play, Square, ChevronDown, ChevronUp, Trash2, Plus, MoreVertical, Clock, Check, X, CalendarIcon, Tag, Pencil,
+  Paperclip, Play, Square, ChevronDown, ChevronUp, Trash2, Plus, MoreVertical, Clock, Check, X, Tag, Pencil, ListChecks, MessageCircle,
 } from 'lucide-react'
 import { Task, Status, Comment, TimeLog, Label } from '@/lib/types'
 import { ColorPalette } from '@/components/ui/color-palette'
@@ -27,6 +26,7 @@ import { formatDuration } from '@/lib/format-time'
 import { format } from 'date-fns'
 import { uk } from 'date-fns/locale'
 import { useAppStore } from '@/store/app-store'
+import { ProjectIcon } from '@/components/ui/icon-picker'
 
 const PRIORITY_LABELS: Record<string, string> = {
   LOW: 'Низький', MEDIUM: 'Середній', HIGH: 'Високий', URGENT: 'Терміновий',
@@ -64,7 +64,6 @@ export default function TaskModal({ taskId, onClose, isSubtask = false, isNew = 
   const [manualDate, setManualDate] = useState(format(new Date(), 'yyyy-MM-dd'))
   const [manualStart, setManualStart] = useState('09:00')
   const [manualEnd, setManualEnd] = useState('10:00')
-  const [deadlineOpen, setDeadlineOpen] = useState(false)
   const [confirmCloseOpen, setConfirmCloseOpen] = useState(false)
   const { projects } = useAppStore()
 
@@ -131,9 +130,11 @@ export default function TaskModal({ taskId, onClose, isSubtask = false, isNew = 
     if (doneStatus && task?.statusId !== doneStatus.id) updateTask({ statusId: doneStatus.id })
   }
 
-  const handleDeadlineSelect = (date: Date | undefined) => {
-    updateTask({ deadline: date ? date.toISOString() : undefined })
-    setDeadlineOpen(false)
+  const handleDateRangeChange = (range: DateRange | undefined) => {
+    updateTask({
+      startDate: range?.from ? range.from.toISOString() : undefined,
+      deadline: range?.to ? range.to.toISOString() : range?.from ? range.from.toISOString() : undefined,
+    })
   }
 
   const handleAddLabel = async (labelId: string) => {
@@ -408,12 +409,13 @@ export default function TaskModal({ taskId, onClose, isSubtask = false, isNew = 
                   </Button>
                 </div>
 
-                {/* Project + Status + Mark done */}
+                {/* Project + Status */}
                 <div className="flex items-center gap-3 px-4 py-3 flex-wrap">
                   {task.project && (
-                    <span className="text-xs font-medium px-2 py-0.5 rounded-full text-white" style={{ backgroundColor: task.project.color }}>
-                      {task.project.name}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <ProjectIcon icon={task.project.icon} color={task.project.color} size="sm" />
+                      <span className="text-sm font-medium">{task.project.name}</span>
+                    </div>
                   )}
 
                   {/* Status dropdown */}
@@ -433,36 +435,39 @@ export default function TaskModal({ taskId, onClose, isSubtask = false, isNew = 
                       ))}
                     </DropdownMenuContent>
                   </DropdownMenu>
-
-                  <Button
-                    size="sm"
-                    variant={isDone ? 'default' : 'outline'}
-                    className={isDone ? 'bg-green-500 hover:bg-green-600 text-white border-0' : ''}
-                    onClick={handleMarkDone}
-                  >
-                    {isDone ? '✓ Завершено' : 'Позначити завершеним'}
-                  </Button>
                 </div>
 
-                {/* Meta fields */}
-                <div className="px-4 pb-4 flex flex-col divide-y divide-border">
+                {/* Meta fields — card style */}
+                <div className="px-4 pb-4 flex flex-wrap gap-4 pt-4">
 
-                  {/* Assignees */}
-                  <div className="flex items-center gap-2 py-2.5 text-sm">
-                    <span className="text-muted-foreground w-28 shrink-0">Виконавці</span>
-                    <span className="text-muted-foreground italic text-xs">Незабаром</span>
+                  {/* Date range (start → deadline) */}
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-xs font-semibold text-foreground">Дедлайн</span>
+                    <DateRangePicker
+                      value={
+                        task.startDate || task.deadline
+                          ? { from: task.startDate ? new Date(task.startDate) : undefined, to: task.deadline ? new Date(task.deadline) : undefined }
+                          : undefined
+                      }
+                      onChange={handleDateRangeChange}
+                      className="bg-[#F5F8FF] rounded-[8px] px-3 py-2 hover:opacity-90 transition-opacity"
+                    />
                   </div>
 
                   {/* Priority */}
-                  <div className="flex items-center gap-2 py-2.5 text-sm">
-                    <span className="text-muted-foreground w-28 shrink-0">Пріоритет</span>
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-xs font-semibold text-foreground">Пріоритет</span>
                     <DropdownMenu>
-                      <DropdownMenuTrigger className="flex items-center gap-1.5 border border-input rounded-md px-2 py-1 text-sm hover:bg-muted transition-colors">
-                        {task.priority
-                          ? <><span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: PRIORITY_COLORS[task.priority] }} /><span>{PRIORITY_LABELS[task.priority]}</span></>
-                          : <span className="text-muted-foreground">Не вказано</span>
-                        }
-                        <ChevronDown className="size-3 text-muted-foreground" />
+                      <DropdownMenuTrigger className="flex items-center gap-2 bg-[#F5F8FF] rounded-[8px] px-3 py-2 text-sm hover:opacity-90 transition-opacity">
+                        {task.priority ? (
+                          <>
+                            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: PRIORITY_COLORS[task.priority] }} />
+                            <span>{PRIORITY_LABELS[task.priority]}</span>
+                          </>
+                        ) : (
+                          <span className="text-muted-foreground">Не вказано</span>
+                        )}
+                        <ChevronDown className="size-3 text-muted-foreground ml-1" />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
                         <DropdownMenuItem onClick={() => handlePriorityChange('')} className="text-muted-foreground">
@@ -480,24 +485,30 @@ export default function TaskModal({ taskId, onClose, isSubtask = false, isNew = 
                   </div>
 
                   {/* Labels */}
-                  <div className="flex items-start gap-2 py-2.5 text-sm">
-                    <span className="text-muted-foreground w-28 shrink-0 mt-0.5">Мітки</span>
-                    <div className="flex flex-wrap items-center gap-1.5 flex-1">
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-xs font-semibold text-foreground">Мітки</span>
+                    <div className="flex flex-wrap items-center gap-1.5">
                       {taskLabels.map((lbl) => (
                         <span
                           key={lbl.id}
-                          className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full text-white cursor-pointer hover:opacity-80"
+                          className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-[8px] text-white cursor-pointer hover:opacity-80"
                           style={{ backgroundColor: lbl.color }}
                           onClick={() => handleAddLabel(lbl.id)}
                         >
                           {lbl.name}
-                          <X className="size-2.5" />
+                          <X className="size-3" />
                         </span>
                       ))}
                       <Popover open={labelPopoverOpen} onOpenChange={setLabelPopoverOpen}>
-                        <PopoverTrigger className="flex items-center gap-1 text-xs text-muted-foreground border border-dashed border-border rounded-full px-2 py-0.5 hover:text-foreground hover:border-foreground/40 transition-colors">
-                          <Tag className="size-3" />
-                          Додати мітку
+                        <PopoverTrigger className={taskLabels.length > 0
+                          ? "flex items-center justify-center text-sm text-muted-foreground border-2 border-dashed border-border rounded-[8px] px-3 h-9 hover:border-foreground/40 hover:text-foreground transition-colors"
+                          : "flex items-center gap-2 text-sm text-muted-foreground bg-[#F5F8FF] rounded-[8px] px-3 py-2 hover:opacity-90 transition-opacity"
+                        }>
+                          {taskLabels.length > 0 ? (
+                            <Plus className="size-3.5" />
+                          ) : (
+                            <><Tag className="size-3.5" />Додати</>
+                          )}
                         </PopoverTrigger>
                         <PopoverContent className="w-64 p-2" align="start">
                           <p className="text-xs font-medium text-muted-foreground mb-2 px-1">Мітки</p>
@@ -573,62 +584,11 @@ export default function TaskModal({ taskId, onClose, isSubtask = false, isNew = 
                     </div>
                   </div>
 
-                  {/* Deadline */}
-                  <div className="flex items-center gap-2 py-2.5 text-sm">
-                    <span className="text-muted-foreground w-28 shrink-0">Дедлайн</span>
-                    <Popover open={deadlineOpen} onOpenChange={setDeadlineOpen}>
-                      <PopoverTrigger className="flex items-center gap-1.5 border border-input rounded-md px-2 py-1 text-sm hover:bg-muted transition-colors">
-                        <CalendarIcon className="size-3.5 text-muted-foreground" />
-                        <span className={task.deadline ? '' : 'text-muted-foreground'}>
-                          {task.deadline ? format(new Date(task.deadline), 'd MMM yyyy', { locale: uk }) : 'Не вказано'}
-                        </span>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={task.deadline ? new Date(task.deadline) : undefined}
-                          onSelect={handleDeadlineSelect}
-                          initialFocus
-                        />
-                        {task.deadline && (
-                          <div className="p-2 border-t">
-                            <Button size="sm" variant="ghost" className="w-full text-xs" onClick={() => handleDeadlineSelect(undefined)}>
-                              Очистити
-                            </Button>
-                          </div>
-                        )}
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                </div>
-
-                {/* Estimated Pomodoros */}
-                <div className="flex items-center gap-2 py-2.5 text-sm px-4">
-                  <span className="text-muted-foreground w-28 shrink-0">🍅 Помодоро</span>
-                  <input
-                    type="number"
-                    min={0}
-                    max={99}
-                    placeholder="—"
-                    defaultValue={task.estimatedPomodoros ?? ''}
-                    onBlur={(e) => {
-                      const val = e.target.value === '' ? null : Math.max(0, parseInt(e.target.value))
-                      if (val !== (task.estimatedPomodoros ?? null)) {
-                        updateTask({ estimatedPomodoros: val ?? undefined })
-                      }
-                    }}
-                    className="w-16 border border-input rounded-md px-2 py-1 text-sm bg-background focus:outline-none focus:ring-1 focus:ring-ring"
-                  />
-                  {task.estimatedPomodoros && (
-                    <span className="text-xs text-muted-foreground">
-                      ≈ {Math.round(task.estimatedPomodoros * 25)} хв
-                    </span>
-                  )}
                 </div>
 
                 {/* Description */}
-                <div className="px-4 pb-4 border-t border-border pt-4">
-                  <p className="text-sm font-medium mb-2">Опис</p>
+                <div className="px-4 pb-4 pt-4">
+                  <p className="text-sm font-medium mb-2 flex items-center gap-2"><Pencil className="size-3.5 text-muted-foreground" />Опис</p>
                   <RichTextEditor
                     key={taskId}
                     initialContent={task.description}
@@ -636,13 +596,111 @@ export default function TaskModal({ taskId, onClose, isSubtask = false, isNew = 
                   />
                 </div>
 
+                {/* Subtasks */}
+                {!isSubtask && (
+                  <div className="px-4 pb-4 pt-4">
+                    {/* Header */}
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <ListChecks className="size-5 text-foreground" />
+                        <span className="text-sm font-semibold">Підзавдання</span>
+                      </div>
+                    </div>
+
+                    {/* Progress bar */}
+                    {subtasks.length > 0 && (
+                      <div className="flex items-center gap-3 mb-4">
+                        <span className="text-sm text-muted-foreground w-8 shrink-0 tabular-nums">
+                          {Math.round((doneSubtasks / subtasks.length) * 100)}%
+                        </span>
+                        <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all duration-300"
+                            style={{ width: `${Math.round((doneSubtasks / subtasks.length) * 100)}%`, backgroundColor: 'var(--aqua-blue)' }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Subtask list */}
+                    <div className="flex flex-col gap-3">
+                      {subtasks.map((subtask) => {
+                        const subtaskDone = subtask.statusId === doneStatus?.id
+                        return (
+                          <div key={subtask.id} className="flex items-center gap-3 group">
+                            <button
+                              className="w-5 h-5 rounded-[5px] border-2 flex items-center justify-center shrink-0 transition-colors"
+                              style={subtaskDone
+                                ? { backgroundColor: 'var(--aqua-blue)', borderColor: 'var(--aqua-blue)' }
+                                : { backgroundColor: 'transparent', borderColor: '#d1d5db' }}
+                              onClick={() => handleToggleSubtask(subtask)}
+                            >
+                              {subtaskDone && (
+                                <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                                  <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                              )}
+                            </button>
+                            <span
+                              className="flex-1 text-sm cursor-pointer hover:text-foreground transition-colors"
+                              style={subtaskDone ? { textDecoration: 'line-through', color: 'var(--muted-foreground)' } : {}}
+                              onClick={() => setOpenSubtaskId(subtask.id)}
+                            >
+                              {subtask.title}
+                            </span>
+                            <button
+                              className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                              onClick={() => handleDeleteSubtask(subtask.id)}
+                            >
+                              <Trash2 className="size-3.5" />
+                            </button>
+                          </div>
+                        )
+                      })}
+                    </div>
+
+                    {/* Add new item */}
+                    {addingSubtask ? (
+                      <div className="flex gap-2 mt-4">
+                        <input
+                          autoFocus
+                          className="flex-1 text-sm border border-input rounded-lg px-3 py-2.5 outline-none focus:border-ring bg-background"
+                          placeholder="Назва підзавдання..."
+                          value={newSubtaskTitle}
+                          onChange={(e) => setNewSubtaskTitle(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleAddSubtask()
+                            if (e.key === 'Escape') { setAddingSubtask(false); setNewSubtaskTitle('') }
+                          }}
+                        />
+                        <button
+                          onClick={handleAddSubtask}
+                          className="py-2.5 px-5 rounded-[8px] text-sm font-medium text-white hover:opacity-90 transition-opacity"
+                          style={{ backgroundColor: 'var(--aqua-blue)' }}
+                        >
+                          Додати
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        className="mt-4 flex items-center gap-2 text-sm font-medium text-white px-5 py-2.5 rounded-[8px] hover:opacity-90 transition-opacity"
+                        onClick={() => setAddingSubtask(true)}
+                        style={{ backgroundColor: 'var(--aqua-blue)' }}
+                      >
+                        <Plus className="size-4" />
+                        Add new item
+                      </button>
+                    )}
+                  </div>
+                )}
+
                 {/* Attachments */}
-                <div className="px-4 pb-4 border-t border-border pt-4">
+                <div className="px-4 pb-4 pt-4">
                   <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm font-medium">Вкладення</p>
-                    <Button size="sm" variant="outline" className="gap-1" onClick={() => fileInputRef.current?.click()}>
-                      <Plus className="size-3" />Додати
-                    </Button>
+                    <p className="text-sm font-medium flex items-center gap-2"><Paperclip className="size-3.5 text-muted-foreground" />Вкладення</p>
+                    <button className="flex items-center gap-1.5 py-2.5 px-5 rounded-[8px] text-sm font-medium border border-input hover:bg-muted transition-colors" onClick={() => fileInputRef.current?.click()}>
+                      <Plus className="size-4" />Додати
+                    </button>
                     <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileUpload} />
                   </div>
                   {task.attachments && task.attachments.length > 0 ? (
@@ -769,120 +827,37 @@ export default function TaskModal({ taskId, onClose, isSubtask = false, isNew = 
                   )}
                 </div>
 
-                {/* Subtasks + Comments tabs */}
-                <div className="flex-1 p-4">
-                  <Tabs defaultValue={isSubtask ? 'comments' : 'subtasks'}>
-                    <TabsList className="w-full mb-3">
-                      {!isSubtask && (
-                        <TabsTrigger value="subtasks" className="flex-1">
-                          Підзавдання {subtasks.length > 0 && `(${subtasks.length})`}
-                        </TabsTrigger>
-                      )}
-                      <TabsTrigger value="comments" className={isSubtask ? 'flex-1' : 'flex-1'}>
-                        Коментарі {comments.length > 0 && `(${comments.length})`}
-                      </TabsTrigger>
-                    </TabsList>
-
-                    {/* Subtasks — only for non-subtasks */}
-                    {!isSubtask && (
-                      <TabsContent value="subtasks">
-                        <div className="flex flex-col gap-2">
-                          {subtasks.map((subtask) => {
-                            const subtaskDone = subtask.statusId === doneStatus?.id
-                            return (
-                              <div key={subtask.id} className="flex items-center gap-2 group">
-                                <Checkbox checked={subtaskDone} onCheckedChange={() => handleToggleSubtask(subtask)} />
-                                <Button
-                                  variant="ghost"
-                                  className="flex-1 text-sm text-left hover:underline truncate h-auto px-0 py-0 justify-start"
-                                  style={{ textDecoration: subtaskDone ? 'line-through' : undefined, color: subtaskDone ? 'var(--muted-foreground)' : undefined }}
-                                  onClick={() => setOpenSubtaskId(subtask.id)}
-                                >
-                                  {subtask.title}
-                                </Button>
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <MoreVertical className="size-3.5 text-muted-foreground" />
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent side="left">
-                                    <DropdownMenuItem onClick={() => setOpenSubtaskId(subtask.id)}>Відкрити</DropdownMenuItem>
-                                    <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteSubtask(subtask.id)}>Видалити</DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              </div>
-                            )
-                          })}
-
-                          {addingSubtask ? (
-                            <div className="flex gap-1.5 mt-1">
-                              <input
-                                autoFocus
-                                className="flex-1 text-sm border border-input rounded-md px-2 py-1 outline-none focus:border-ring bg-background"
-                                placeholder="Назва підзавдання..."
-                                value={newSubtaskTitle}
-                                onChange={(e) => setNewSubtaskTitle(e.target.value)}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') handleAddSubtask()
-                                  if (e.key === 'Escape') { setAddingSubtask(false); setNewSubtaskTitle('') }
-                                }}
-                              />
-                              <Button size="sm" onClick={handleAddSubtask}>Додати</Button>
-                            </div>
-                          ) : (
-                            <Button variant="ghost" className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mt-1 h-auto px-0 py-0" onClick={() => setAddingSubtask(true)}>
-                              <Plus className="size-3.5" />Додати підзавдання
-                            </Button>
-                          )}
-
-                          {subtasks.length > 0 && (
-                            <div className="mt-3">
-                              <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                                <span>Прогрес</span><span>{doneSubtasks}/{subtasks.length}</span>
-                              </div>
-                              <div className="flex gap-px overflow-hidden rounded-full">
-                                {subtasks.map((st) => (
-                                  <div
-                                    key={st.id}
-                                    className="h-1.5 flex-1 transition-colors duration-300"
-                                    style={{ backgroundColor: st.statusId === doneStatus?.id ? '#fad000' : '#e2e8f0' }}
-                                  />
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </TabsContent>
-                    )}
-
-                    {/* Comments */}
-                    <TabsContent value="comments">
-                      <div className="flex flex-col gap-3">
-                        <Textarea
-                          placeholder="Напишіть коментар..."
-                          value={newComment}
-                          onChange={(e) => setNewComment(e.target.value)}
-                          className="text-sm resize-none min-h-[60px]"
-                          onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleAddComment() }}
-                        />
-                        <Button size="sm" onClick={handleAddComment} disabled={!newComment.trim()} className="self-end">
-                          Додати коментар
-                        </Button>
-                        <div className="flex flex-col gap-2">
-                          {comments.map((comment: Comment) => (
-                            <div key={comment.id} className="flex flex-col gap-1 p-2.5 rounded-lg bg-muted group">
-                              <p className="text-sm">{comment.content}</p>
-                              <div className="flex items-center justify-between">
-                                <span className="text-xs text-muted-foreground">{format(new Date(comment.createdAt), 'dd.MM.yyyy HH:mm')}</span>
-                                <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity size-5" onClick={() => handleDeleteComment(comment.id)}>
-                                  <Trash2 className="size-3" />
-                                </Button>
-                              </div>
-                            </div>
-                          ))}
+                {/* Comments */}
+                <div className="flex-1 p-4 flex flex-col gap-3">
+                  <p className="text-sm font-medium flex items-center gap-2"><MessageCircle className="size-3.5 text-muted-foreground" />Коментарі {comments.length > 0 && `(${comments.length})`}</p>
+                  <Textarea
+                    placeholder="Напишіть коментар..."
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    className="text-sm resize-none min-h-[60px]"
+                    onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleAddComment() }}
+                  />
+                  <button
+                    onClick={handleAddComment}
+                    disabled={!newComment.trim()}
+                    className="w-full py-2.5 rounded-[8px] text-sm font-medium text-white hover:opacity-90 transition-opacity disabled:opacity-40"
+                    style={{ backgroundColor: 'var(--aqua-blue)' }}
+                  >
+                    Додати коментар
+                  </button>
+                  <div className="flex flex-col gap-2">
+                    {comments.map((comment: Comment) => (
+                      <div key={comment.id} className="flex flex-col gap-1 p-2.5 rounded-lg bg-muted group">
+                        <p className="text-sm">{comment.content}</p>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-muted-foreground">{format(new Date(comment.createdAt), 'dd.MM.yyyy HH:mm')}</span>
+                          <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity size-5" onClick={() => handleDeleteComment(comment.id)}>
+                            <Trash2 className="size-3" />
+                          </Button>
                         </div>
                       </div>
-                    </TabsContent>
-                  </Tabs>
+                    ))}
+                  </div>
                 </div>
               </div>
               {/* Confirm discard overlay */}

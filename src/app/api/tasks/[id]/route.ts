@@ -50,7 +50,7 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { title, description, priority, deadline, statusId, order, deletedAt } = body;
+    const { title, description, priority, startDate, deadline, statusId, order, deletedAt } = body;
 
     // Cascade deletedAt to subtasks (soft-delete or restore together)
     if (deletedAt !== undefined) {
@@ -66,6 +66,9 @@ export async function PATCH(
         ...(title !== undefined && { title }),
         ...(description !== undefined && { description }),
         ...(priority !== undefined && { priority }),
+        ...(startDate !== undefined && {
+          startDate: startDate ? new Date(startDate) : null,
+        }),
         ...(deadline !== undefined && {
           deadline: deadline ? new Date(deadline) : null,
         }),

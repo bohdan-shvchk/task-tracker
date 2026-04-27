@@ -57,6 +57,7 @@ model Task {
   title       String
   description String?
   priority    String?
+  startDate   DateTime?
   deadline    DateTime?
   order       Int          @default(0)
   projectId   String

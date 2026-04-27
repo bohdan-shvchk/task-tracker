@@ -5,7 +5,7 @@ import { useDroppable } from '@dnd-kit/core'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
-import { Plus, MoreVertical } from 'lucide-react'
+import { Plus, MoreVertical, Circle, CircleCheck } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -81,47 +81,68 @@ export default function KanbanColumn({
   return (
     <div ref={setSortRef} style={style} className="flex flex-col w-72 shrink-0">
       <div className="rounded-[8px] overflow-hidden shadow-sm bg-[#F7FAFF]">
-        {/* Colored top bar — also serves as drag handle */}
-        <div
-          className="h-1 w-full cursor-grab active:cursor-grabbing"
-          style={{ backgroundColor: status.color }}
-          {...attributes}
-          {...listeners}
-        />
-
         {/* Column header */}
-        <div className="flex items-center justify-between px-3 pt-3 pb-2">
-          {renaming ? (
-            <input
-              autoFocus
-              className="flex-1 text-sm font-semibold bg-transparent border-b border-border outline-none mr-2"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              onBlur={handleRenameSubmit}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleRenameSubmit()
-                if (e.key === 'Escape') { setRenaming(false); setNewName(status.name) }
-              }}
-            />
-          ) : (
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="text-sm font-semibold text-foreground truncate">{status.name}</span>
-              <span className="text-[11px] text-muted-foreground bg-[#F7FAFF] border border-border rounded-full px-1.5 py-0.5 shrink-0">
-                {tasks.length}
-              </span>
-            </div>
-          )}
+        <div className="flex items-center gap-2 px-2 pt-2.5 pb-2">
+          {/* Status badge — drag handle */}
+          <div
+            className="flex items-center gap-1.5 w-fit max-w-full px-2.5 py-1.5 rounded-[8px] cursor-grab active:cursor-grabbing select-none"
+            style={{ backgroundColor: status.color }}
+            {...attributes}
+            {...listeners}
+          >
+            {/* Icon — click opens color picker */}
+            <button
+              className="shrink-0 text-white/90 hover:text-white transition-colors"
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => { e.stopPropagation(); setColorPickerOpen((v) => !v) }}
+              title="Змінити колір"
+            >
+              {status.isDone
+                ? <CircleCheck className="size-3.5" />
+                : <Circle className="size-3.5" />
+              }
+            </button>
 
+            {/* Status name */}
+            {renaming ? (
+              <input
+                autoFocus
+                className="flex-1 min-w-0 bg-transparent outline-none text-white text-xs font-bold uppercase tracking-wide placeholder:text-white/60 border-b border-white/50"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                onMouseDown={(e) => e.stopPropagation()}
+                onBlur={handleRenameSubmit}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleRenameSubmit()
+                  if (e.key === 'Escape') { setRenaming(false); setNewName(status.name) }
+                }}
+              />
+            ) : (
+              <span
+                className="text-xs font-bold text-white uppercase tracking-wide truncate"
+                onMouseDown={(e) => e.stopPropagation()}
+                onDoubleClick={(e) => { e.stopPropagation(); setRenaming(true); setNewName(status.name) }}
+              >
+                {status.name}
+              </span>
+            )}
+          </div>
+
+          {/* Task count */}
+          <span className="text-[11px] text-muted-foreground border border-border rounded-full px-1.5 py-0.5 shrink-0 bg-white">
+            {tasks.length}
+          </span>
+
+          <span className="flex-1" />
+
+          {/* Menu */}
           <DropdownMenu>
-            <DropdownMenuTrigger className="text-muted-foreground hover:text-foreground transition-colors p-0.5 rounded shrink-0 ml-1">
+            <DropdownMenuTrigger className="text-muted-foreground hover:text-foreground transition-colors p-0.5 rounded shrink-0">
               <MoreVertical className="size-4" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => { setRenaming(true); setNewName(status.name) }}>
                 Перейменувати
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setColorPickerOpen((v) => !v)}>
-                Змінити колір
               </DropdownMenuItem>
               <DropdownMenuItem className="text-destructive" onClick={() => onDeleteStatus(status.id)}>
                 Видалити
@@ -186,7 +207,8 @@ export default function KanbanColumn({
         {!addingTask && (
           <button
             onClick={() => setAddingTask(true)}
-            className="flex items-center gap-2 px-3 py-2.5 w-full text-sm text-muted-foreground hover:text-foreground hover:bg-[#F7FAFF]/60 transition-colors"
+            className="flex items-center gap-2 px-3 py-2.5 w-full text-sm font-medium transition-opacity hover:opacity-70"
+            style={{ color: status.color }}
           >
             <Plus className="size-4" />
             Додати завдання

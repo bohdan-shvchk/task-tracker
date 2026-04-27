@@ -1,473 +1,483 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { format, subDays, startOfMonth, endOfMonth, subMonths } from 'date-fns'
+import { useEffect, useState, useCallback } from 'react'
+import { format, isToday, isYesterday } from 'date-fns'
+import { uk } from 'date-fns/locale'
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
+  LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell,
+  RadialBarChart, RadialBar,
 } from 'recharts'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from '@/components/ui/chart'
+  CheckCircle2, Clock, AlertCircle, CalendarDays, MoreVertical, Plus,
+  TrendingUp,
+} from 'lucide-react'
 import Sidebar from '@/components/layout/Sidebar'
 import { useAppStore } from '@/store/app-store'
 import { Project } from '@/lib/types'
-import { formatDuration } from '@/lib/format-time'
 import TaskModal from '@/components/task/TaskModal'
 
-interface AnalyticsEntry {
-  taskId: string
-  taskTitle: string
-  projectId: string
-  projectName: string
-  totalSeconds: number
+/* ─── Types ────────────────────────────────────────────────── */
+interface DashboardData {
+  summary: { total: number; completed: number; inProgress: number; pending: number; upcoming: number }
+  weeklyLoad: { day: string; new: number; completed: number }[]
+  monthlyByProject: Record<string, string | number>[]
+  workloadByProject: Record<string, string | number>[]
+  projects: { id: string; name: string; color: string; total: number; completed: number; progress: number }[]
+  recentTasks: { id: string; title: string; deadline: string | null; isDone: boolean; createdAt: string }[]
 }
 
-interface AnalyticsData {
-  totalSeconds: number
-  entries: AnalyticsEntry[]
-}
+/* ─── Gauge SVG ─────────────────────────────────────────────── */
+function GaugeChart({ pct, label }: { pct: number; label: string }) {
+  const r = 72
+  const cx = 110
+  const cy = 105
+  const strokeW = 18
 
-interface SubtaskStats {
-  totalTasks: number
-  completedTasks: number
-  totalSubtasks: number
-  completedSubtasks: number
-  byProject: {
-    projectId: string
-    projectName: string
-    projectColor: string
-    totalTasks: number
-    completedTasks: number
-    totalSubtasks: number
-    completedSubtasks: number
-  }[]
-}
+  // Background full semi-circle: M (cx-r, cy) arc to (cx+r, cy) going UP
+  const bgD = `M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`
 
-const chartConfig = {
-  hours: {
-    label: 'Час (год)',
-    color: 'var(--chart-5)',
-  },
-} satisfies ChartConfig
+  // Filled arc from left, angle proportional to pct
+  const rad = Math.PI * (pct / 100)
+  const ex = cx - r * Math.cos(rad)
+  const ey = cy - r * Math.sin(rad)
+  const largeArc = pct > 50 ? 1 : 0
+  const fillD = pct > 0 ? `M ${cx - r} ${cy} A ${r} ${r} 0 ${largeArc} 1 ${ex} ${ey}` : ''
 
-export default function AnalyticsPage() {
-  const { setProjects, openTaskId, setOpenTaskId } = useAppStore()
-  const [data, setData] = useState<AnalyticsData | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [subtaskStats, setSubtaskStats] = useState<SubtaskStats | null>(null)
-  const [startDate, setStartDate] = useState(
-    format(startOfMonth(new Date()), 'yyyy-MM-dd')
-  )
-  const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'))
-
-  useEffect(() => {
-    fetch('/api/projects')
-      .then((r) => r.json())
-      .then((projs: Project[]) => setProjects(projs))
-      .catch(console.error)
-  }, [setProjects])
-
-  useEffect(() => {
-    fetch('/api/analytics/subtasks')
-      .then((r) => r.json())
-      .then((json: SubtaskStats) => setSubtaskStats(json))
-      .catch(console.error)
-  }, [])
-
-  const fetchAnalytics = async () => {
-    setLoading(true)
-    try {
-      const res = await fetch(
-        `/api/analytics?startDate=${startDate}&endDate=${endDate}`
-      )
-      if (res.ok) {
-        const json = await res.json()
-        setData(json)
-      }
-    } catch (e) {
-      console.error(e)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    fetchAnalytics()
-  }, [startDate, endDate])
-
-  const applyQuickFilter = (type: string) => {
-    const now = new Date()
-    switch (type) {
-      case 'this-month':
-        setStartDate(format(startOfMonth(now), 'yyyy-MM-dd'))
-        setEndDate(format(endOfMonth(now), 'yyyy-MM-dd'))
-        break
-      case 'last-month': {
-        const last = subMonths(now, 1)
-        setStartDate(format(startOfMonth(last), 'yyyy-MM-dd'))
-        setEndDate(format(endOfMonth(last), 'yyyy-MM-dd'))
-        break
-      }
-      case '7-days':
-        setStartDate(format(subDays(now, 7), 'yyyy-MM-dd'))
-        setEndDate(format(now, 'yyyy-MM-dd'))
-        break
-      case '30-days':
-        setStartDate(format(subDays(now, 30), 'yyyy-MM-dd'))
-        setEndDate(format(now, 'yyyy-MM-dd'))
-        break
-    }
-  }
-
-  const chartData = (data?.entries ?? [])
-    .slice()
-    .sort((a, b) => b.totalSeconds - a.totalSeconds)
-    .slice(0, 10)
-    .map((e) => ({
-      name: e.taskTitle.length > 20 ? e.taskTitle.slice(0, 20) + '…' : e.taskTitle,
-      hours: parseFloat((e.totalSeconds / 3600).toFixed(2)),
-      fullTitle: e.taskTitle,
-    }))
-
-  const totalSeconds = data?.totalSeconds ?? 0
-
-  const taskCompletionPct = subtaskStats && subtaskStats.totalTasks > 0
-    ? Math.round((subtaskStats.completedTasks / subtaskStats.totalTasks) * 100)
-    : 0
-
-  const subtaskCompletionPct = subtaskStats && subtaskStats.totalSubtasks > 0
-    ? Math.round((subtaskStats.completedSubtasks / subtaskStats.totalSubtasks) * 100)
-    : 0
+  // Tick marks every 10 units
+  const ticks = Array.from({ length: 11 }, (_, i) => i * 10)
 
   return (
-    <div className="flex flex-1 min-h-screen bg-muted/20">
+    <svg width={220} height={130} viewBox="0 0 220 130">
+      <defs>
+        <linearGradient id="gaugeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor="#06b6d4" />
+          <stop offset="45%" stopColor="#f97316" />
+          <stop offset="100%" stopColor="#ef4444" />
+        </linearGradient>
+      </defs>
+
+      {/* Tick marks */}
+      {ticks.map((t) => {
+        const angle = Math.PI * (t / 100)
+        const inner = r + strokeW / 2 + 5
+        const outer = inner + 6
+        const x1 = cx - inner * Math.cos(angle)
+        const y1 = cy - inner * Math.sin(angle)
+        const x2 = cx - outer * Math.cos(angle)
+        const y2 = cy - outer * Math.sin(angle)
+        return <line key={t} x1={x1} y1={y1} x2={x2} y2={y2} stroke="#cbd5e1" strokeWidth={1.5} />
+      })}
+
+      {/* Scale labels */}
+      {[0, 25, 50, 75, 100].map((t) => {
+        const angle = Math.PI * (t / 100)
+        const dist = r + strokeW / 2 + 18
+        const lx = cx - dist * Math.cos(angle)
+        const ly = cy - dist * Math.sin(angle)
+        return (
+          <text key={t} x={lx} y={ly} textAnchor="middle" dominantBaseline="middle"
+            fontSize={9} fill="#94a3b8">{t}</text>
+        )
+      })}
+
+      {/* Background arc */}
+      <path d={bgD} fill="none" stroke="#e2e8f0" strokeWidth={strokeW} strokeLinecap="round" />
+
+      {/* Filled arc */}
+      {fillD && (
+        <path d={fillD} fill="none" stroke="url(#gaugeGrad)" strokeWidth={strokeW} strokeLinecap="round" />
+      )}
+
+      {/* Center text */}
+      <text x={cx} y={cy - 14} textAnchor="middle" fontSize={26} fontWeight="700" fill="#1e293b">
+        {pct}%
+      </text>
+      <text x={cx} y={cy + 6} textAnchor="middle" fontSize={11} fill="#94a3b8">
+        {label}
+      </text>
+    </svg>
+  )
+}
+
+/* ─── Custom Tooltip ────────────────────────────────────────── */
+function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: { name: string; value: number; color: string }[]; label?: string }) {
+  if (!active || !payload?.length) return null
+  return (
+    <div className="bg-white border border-border rounded-lg shadow-lg px-3 py-2 text-xs">
+      <p className="font-medium text-foreground mb-1">{label}</p>
+      {payload.map((p) => (
+        <div key={p.name} className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: p.color }} />
+          <span className="text-muted-foreground">{p.name}:</span>
+          <span className="font-medium">{p.value}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/* ─── Summary card ──────────────────────────────────────────── */
+function StatCard({
+  label, value, total, pct, icon, bg, iconColor,
+}: {
+  label: string; value: number; total: number; pct: number
+  icon: React.ReactNode; bg: string; iconColor: string
+}) {
+  return (
+    <div className="bg-white rounded-2xl p-5 shadow-sm border border-border/40 flex flex-col gap-3">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-sm text-muted-foreground mb-1">{label}</p>
+          <p className="text-2xl font-bold text-foreground">
+            {value} <span className="text-base font-normal text-muted-foreground">/{total}</span>
+          </p>
+        </div>
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: bg }}>
+          <span style={{ color: iconColor }}>{icon}</span>
+        </div>
+      </div>
+      <div className="flex items-center gap-1.5 text-xs" style={{ color: iconColor }}>
+        <TrendingUp className="size-3.5" />
+        <span>{pct}% from last month</span>
+      </div>
+    </div>
+  )
+}
+
+/* ─── Page ──────────────────────────────────────────────────── */
+export default function AnalyticsPage() {
+  const { setProjects, openTaskId, setOpenTaskId } = useAppStore()
+  const [data, setData] = useState<DashboardData | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  const fetchData = useCallback(async () => {
+    try {
+      const [dashRes, projRes] = await Promise.all([
+        fetch('/api/analytics/dashboard'),
+        fetch('/api/projects'),
+      ])
+      if (dashRes.ok) setData(await dashRes.json())
+      if (projRes.ok) setProjects(await projRes.json() as Project[])
+    } catch (e) { console.error(e) }
+    finally { setLoading(false) }
+  }, [setProjects])
+
+  useEffect(() => { fetchData() }, [fetchData])
+
+  const handleToggleTask = async (taskId: string, isDone: boolean) => {
+    if (isDone) return // already done, click opens modal
+    setOpenTaskId(taskId)
+  }
+
+  if (loading) {
+    return (
+      <div className="flex flex-1 min-h-screen bg-[#f8fafc]">
+        <Sidebar />
+        <main className="flex-1 flex items-center justify-center text-muted-foreground">Завантаження...</main>
+      </div>
+    )
+  }
+
+  const s = data?.summary ?? { total: 0, completed: 0, inProgress: 0, pending: 0, upcoming: 0 }
+  const projects = data?.projects ?? []
+  const completionPct = s.total > 0 ? Math.round((s.completed / s.total) * 100) : 0
+
+  // Group recent tasks by month
+  const tasksByMonth: Record<string, typeof data.recentTasks> = {}
+  ;(data?.recentTasks ?? []).forEach((t) => {
+    const key = format(new Date(t.createdAt), 'MMMM yyyy', { locale: uk })
+    if (!tasksByMonth[key]) tasksByMonth[key] = []
+    tasksByMonth[key].push(t)
+  })
+
+  // Radial data for "Overall Progress"
+  const radialData = projects.map((p) => ({
+    name: p.name,
+    value: p.progress,
+    fill: p.color,
+  }))
+
+  return (
+    <div className="flex flex-1 min-h-screen bg-[#f8fafc]">
       <Sidebar />
 
-      <main className="flex-1 overflow-y-auto">
-        <div className="@container/main flex flex-1 flex-col gap-2">
-          <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
+      <main className="flex-1 overflow-y-auto px-6 py-6 flex flex-col gap-6">
 
-            {/* Page title */}
-            <div className="px-4 lg:px-6">
-              <h1 className="text-2xl font-bold tracking-tight">Аналітика</h1>
-            </div>
+        {/* Page title */}
+        <h1 className="text-2xl font-bold text-foreground">Аналітика</h1>
 
-            {/* Stat cards */}
-            {subtaskStats && (
-              <div className="*:data-[slot=card]:bg-linear-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 px-4 lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
-                <Card className="@container/card">
-                  <CardHeader>
-                    <CardDescription>Задач всього</CardDescription>
-                    <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-                      {subtaskStats.totalTasks}
-                    </CardTitle>
-                    <CardAction>
-                      <Badge variant="outline">{taskCompletionPct}% виконано</Badge>
-                    </CardAction>
-                  </CardHeader>
-                  <CardFooter className="flex-col items-start gap-1.5 text-sm">
-                    <div className="text-muted-foreground">
-                      {subtaskStats.completedTasks} завершено
-                    </div>
-                  </CardFooter>
-                </Card>
-
-                <Card className="@container/card">
-                  <CardHeader>
-                    <CardDescription>Задач виконано</CardDescription>
-                    <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-                      {subtaskStats.completedTasks}
-                    </CardTitle>
-                    <CardAction>
-                      <Badge variant="outline">з {subtaskStats.totalTasks}</Badge>
-                    </CardAction>
-                  </CardHeader>
-                  <CardFooter className="flex-col items-start gap-1.5 text-sm">
-                    <div className="text-muted-foreground">
-                      {subtaskStats.totalTasks - subtaskStats.completedTasks} залишилось
-                    </div>
-                  </CardFooter>
-                </Card>
-
-                <Card className="@container/card">
-                  <CardHeader>
-                    <CardDescription>Підзадач всього</CardDescription>
-                    <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-                      {subtaskStats.totalSubtasks}
-                    </CardTitle>
-                    <CardAction>
-                      <Badge variant="outline">{subtaskCompletionPct}% виконано</Badge>
-                    </CardAction>
-                  </CardHeader>
-                  <CardFooter className="flex-col items-start gap-1.5 text-sm">
-                    <div className="text-muted-foreground">
-                      {subtaskStats.completedSubtasks} завершено
-                    </div>
-                  </CardFooter>
-                </Card>
-
-                <Card className="@container/card">
-                  <CardHeader>
-                    <CardDescription>Підзадач виконано</CardDescription>
-                    <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-                      {subtaskStats.completedSubtasks}
-                    </CardTitle>
-                    <CardAction>
-                      <Badge variant="outline">з {subtaskStats.totalSubtasks}</Badge>
-                    </CardAction>
-                  </CardHeader>
-                  <CardFooter className="flex-col items-start gap-1.5 text-sm">
-                    <div className="text-muted-foreground">
-                      {subtaskStats.totalSubtasks - subtaskStats.completedSubtasks} залишилось
-                    </div>
-                  </CardFooter>
-                </Card>
-              </div>
-            )}
-
-            {/* By-project progress table */}
-            {subtaskStats && subtaskStats.byProject.length > 0 && (
-              <div className="px-4 lg:px-6">
-                <Card>
-                  <CardHeader className="border-b">
-                    <CardTitle>Прогрес по проєктах</CardTitle>
-                  </CardHeader>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="px-4">Проєкт</TableHead>
-                        <TableHead className="px-4 text-center">Задачі</TableHead>
-                        <TableHead className="px-4 text-center">Підзадачі</TableHead>
-                        <TableHead className="px-4">Прогрес</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {subtaskStats.byProject.map((p) => {
-                        const total = p.totalTasks + p.totalSubtasks
-                        const completed = p.completedTasks + p.completedSubtasks
-                        const percent = total > 0 ? Math.round((completed / total) * 100) : 0
-                        return (
-                          <TableRow key={p.projectId}>
-                            <TableCell className="px-4 font-medium">
-                              <div className="flex items-center gap-2.5">
-                                <span
-                                  className="w-2.5 h-2.5 rounded-full shrink-0 inline-block"
-                                  style={{ backgroundColor: p.projectColor }}
-                                />
-                                {p.projectName}
-                              </div>
-                            </TableCell>
-                            <TableCell className="px-4 text-center text-muted-foreground">
-                              {p.completedTasks}/{p.totalTasks}
-                            </TableCell>
-                            <TableCell className="px-4 text-center text-muted-foreground">
-                              {p.completedSubtasks}/{p.totalSubtasks}
-                            </TableCell>
-                            <TableCell className="px-4">
-                              <div className="flex items-center gap-3">
-                                <div className="flex-1 bg-muted rounded-full h-1.5 overflow-hidden">
-                                  <div
-                                    className="h-full bg-primary rounded-full transition-all"
-                                    style={{ width: `${percent}%` }}
-                                  />
-                                </div>
-                                <span className="text-xs text-muted-foreground w-8 text-right tabular-nums">{percent}%</span>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        )
-                      })}
-                    </TableBody>
-                  </Table>
-                </Card>
-              </div>
-            )}
-
-            {/* Quick filters */}
-            <div className="flex gap-2 px-4 lg:px-6 flex-wrap">
-              <Button size="sm" variant="outline" onClick={() => applyQuickFilter('this-month')}>
-                Цей місяць
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => applyQuickFilter('last-month')}>
-                Минулий місяць
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => applyQuickFilter('7-days')}>
-                7 днів
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => applyQuickFilter('30-days')}>
-                30 днів
-              </Button>
-            </div>
-
-            {/* Date range */}
-            <div className="flex items-center gap-3 px-4 lg:px-6 flex-wrap">
-              <div className="flex items-center gap-2">
-                <label className="text-sm font-medium text-muted-foreground">Від</label>
-                <input
-                  type="date"
-                  className="text-sm border border-input rounded-lg px-3 py-1.5 bg-background outline-none focus:border-ring transition-colors"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <label className="text-sm font-medium text-muted-foreground">До</label>
-                <input
-                  type="date"
-                  className="text-sm border border-input rounded-lg px-3 py-1.5 bg-background outline-none focus:border-ring transition-colors"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                />
-              </div>
-            </div>
-
-            {loading ? (
-              <p className="text-muted-foreground text-sm px-4 lg:px-6">Завантаження...</p>
-            ) : (
-              <>
-                {/* Total time card */}
-                <div className="px-4 lg:px-6">
-                  <Card className="*:data-[slot=card]:bg-linear-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs dark:*:data-[slot=card]:bg-card @container/card inline-flex flex-col">
-                    <CardHeader>
-                      <CardDescription>Загальний час</CardDescription>
-                      <CardTitle className="text-2xl font-semibold tabular-nums font-mono @[250px]/card:text-3xl">
-                        {formatDuration(totalSeconds)}
-                      </CardTitle>
-                    </CardHeader>
-                  </Card>
-                </div>
-
-                {/* Bar chart */}
-                {chartData.length > 0 && (
-                  <div className="px-4 lg:px-6">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Топ 10 завдань за часом</CardTitle>
-                      </CardHeader>
-                      <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
-                        <ChartContainer config={chartConfig} className="aspect-auto h-[280px] w-full">
-                          <BarChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 60 }}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                            <XAxis
-                              dataKey="name"
-                              tick={{ fontSize: 11 }}
-                              angle={-35}
-                              textAnchor="end"
-                              interval={0}
-                              axisLine={false}
-                              tickLine={false}
-                              tickMargin={8}
-                            />
-                            <YAxis
-                              tick={{ fontSize: 11 }}
-                              label={{ value: 'год', angle: -90, position: 'insideLeft', style: { fontSize: 11 } }}
-                              axisLine={false}
-                              tickLine={false}
-                            />
-                            <ChartTooltip
-                              cursor={false}
-                              content={
-                                <ChartTooltipContent
-                                  labelFormatter={(label) => {
-                                    const entry = chartData.find((d) => d.name === label)
-                                    return entry?.fullTitle ?? label
-                                  }}
-                                />
-                              }
-                            />
-                            <Bar dataKey="hours" fill="var(--color-hours)" radius={[4, 4, 0, 0]} />
-                          </BarChart>
-                        </ChartContainer>
-                      </CardContent>
-                    </Card>
-                  </div>
-                )}
-
-                {/* Time-log table */}
-                {(data?.entries ?? []).length > 0 ? (
-                  <div className="px-4 lg:px-6">
-                    <Card>
-                      <CardHeader className="border-b">
-                        <CardTitle>Деталізація по завданнях</CardTitle>
-                      </CardHeader>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead className="px-4">Завдання</TableHead>
-                            <TableHead className="px-4">Проєкт</TableHead>
-                            <TableHead className="px-4 text-right">Час</TableHead>
-                            <TableHead className="px-4 text-right">%</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {(data?.entries ?? [])
-                            .slice()
-                            .sort((a, b) => b.totalSeconds - a.totalSeconds)
-                            .map((entry) => {
-                              const percent =
-                                totalSeconds > 0
-                                  ? ((entry.totalSeconds / totalSeconds) * 100).toFixed(1)
-                                  : '0'
-                              return (
-                                <TableRow
-                                  key={entry.taskId}
-                                  className="cursor-pointer"
-                                  onClick={() => setOpenTaskId(entry.taskId)}
-                                >
-                                  <TableCell className="px-4 font-medium">{entry.taskTitle}</TableCell>
-                                  <TableCell className="px-4 text-muted-foreground">{entry.projectName}</TableCell>
-                                  <TableCell className="px-4 text-right font-mono tabular-nums">
-                                    {formatDuration(entry.totalSeconds)}
-                                  </TableCell>
-                                  <TableCell className="px-4 text-right text-muted-foreground tabular-nums">{percent}%</TableCell>
-                                </TableRow>
-                              )
-                            })}
-                        </TableBody>
-                      </Table>
-                    </Card>
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground text-sm px-4 lg:px-6">Немає даних за обраний період</p>
-                )}
-              </>
-            )}
-
+        {/* ── Row 1: Summary cards ── */}
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-base font-semibold text-foreground">Task Summary</h2>
           </div>
+          <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+            <StatCard label="Completed Tasks" value={s.completed} total={s.total}
+              pct={s.total > 0 ? Math.round((s.completed / s.total) * 100) : 0}
+              icon={<CheckCircle2 className="size-5" />}
+              bg="#dcfce7" iconColor="#16a34a" />
+            <StatCard label="In Progress Tasks" value={s.inProgress} total={s.total}
+              pct={s.total > 0 ? Math.round((s.inProgress / s.total) * 100) : 0}
+              icon={<Clock className="size-5" />}
+              bg="#dbeafe" iconColor="#2a6ff3" />
+            <StatCard label="Tasks Pending" value={s.pending} total={s.total}
+              pct={s.total > 0 ? Math.round((s.pending / s.total) * 100) : 0}
+              icon={<AlertCircle className="size-5" />}
+              bg="#ffedd5" iconColor="#f97316" />
+            <StatCard label="Upcoming Tasks" value={s.upcoming} total={s.total}
+              pct={s.total > 0 ? Math.round((s.upcoming / s.total) * 100) : 0}
+              icon={<CalendarDays className="size-5" />}
+              bg="#fee2e2" iconColor="#ef4444" />
+          </div>
+        </section>
+
+        {/* ── Row 2: Weekly Load + Project Progress ── */}
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+
+          {/* Weekly Task Load */}
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-border/40">
+            <div className="flex items-center justify-between mb-1">
+              <h2 className="text-base font-semibold">Weekly Task Load</h2>
+            </div>
+            <p className="text-xs text-muted-foreground mb-4">
+              {projects.length} Projects · {s.total} Tasks
+            </p>
+            <ResponsiveContainer width="100%" height={200}>
+              <LineChart data={data?.weeklyLoad ?? []} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                <XAxis dataKey="day" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                <Tooltip content={<ChartTooltip />} />
+                <Line type="monotone" dataKey="completed" name="Completed Tasks" stroke="#2a6ff3" strokeWidth={2.5} dot={{ r: 3, fill: '#2a6ff3' }} activeDot={{ r: 5 }} />
+                <Line type="monotone" dataKey="new" name="New Tasks" stroke="#f97316" strokeWidth={2.5} dot={{ r: 3, fill: '#f97316' }} activeDot={{ r: 5 }} />
+                <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Project Progress (monthly) */}
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-border/40">
+            <div className="flex items-center justify-between mb-1">
+              <h2 className="text-base font-semibold">Project Progress</h2>
+            </div>
+            <p className="text-xs text-muted-foreground mb-4">
+              {projects.length} Projects · {s.total} Tasks
+            </p>
+            <ResponsiveContainer width="100%" height={200}>
+              <LineChart data={data?.monthlyByProject ?? []} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                <Tooltip content={<ChartTooltip />} />
+                {projects.map((p) => (
+                  <Line key={p.id} type="monotone" dataKey={p.id} name={p.name}
+                    stroke={p.color} strokeWidth={2.5}
+                    dot={{ r: 3, fill: p.color }} activeDot={{ r: 5 }} />
+                ))}
+                <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* ── Row 3: Project Workload + Completion Rate ── */}
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+
+          {/* Project Workload */}
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-border/40">
+            <h2 className="text-base font-semibold mb-4">Project Workload</h2>
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={data?.workloadByProject ?? []} margin={{ top: 5, right: 10, left: -20, bottom: 0 }} barGap={2}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                <Tooltip content={<ChartTooltip />} />
+                {projects.map((p) => (
+                  <Bar key={p.id} dataKey={p.id} name={p.name} fill={p.color} radius={[3, 3, 0, 0]} maxBarSize={16} />
+                ))}
+                <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Task Completion Rate */}
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-border/40">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base font-semibold">Task Completion Rate</h2>
+            </div>
+
+            <div className="flex justify-center">
+              <GaugeChart pct={completionPct} label="Completed" />
+            </div>
+
+            <div className="grid grid-cols-4 gap-2 mt-3 text-center">
+              <div>
+                <p className="text-lg font-bold text-foreground">{s.total}</p>
+                <p className="text-[11px] text-muted-foreground">Total Task</p>
+              </div>
+              <div>
+                <p className="text-lg font-bold" style={{ color: '#06b6d4' }}>{s.completed}</p>
+                <p className="text-[11px] text-muted-foreground">Completed</p>
+              </div>
+              <div>
+                <p className="text-lg font-bold" style={{ color: '#f97316' }}>{s.pending}</p>
+                <p className="text-[11px] text-muted-foreground">Pending</p>
+              </div>
+              <div>
+                <p className="text-lg font-bold" style={{ color: '#ef4444' }}>{s.upcoming}</p>
+                <p className="text-[11px] text-muted-foreground">Upcoming</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Row 4: My Tasks + Overall Progress ── */}
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 pb-6">
+
+          {/* My Tasks */}
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-border/40 flex flex-col">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base font-semibold">My Tasks</h2>
+              <button className="text-muted-foreground hover:text-foreground transition-colors">
+                <MoreVertical className="size-4" />
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-4 flex-1">
+              {Object.keys(tasksByMonth).length === 0 && (
+                <p className="text-sm text-muted-foreground">Немає задач</p>
+              )}
+              {Object.entries(tasksByMonth).map(([month, tasks]) => (
+                <div key={month}>
+                  <p className="text-xs font-semibold text-muted-foreground mb-2 capitalize">{month}</p>
+                  <div className="flex flex-col gap-2">
+                    {tasks.map((t) => {
+                      const dateStr = t.deadline
+                        ? format(new Date(t.deadline), 'MMM d', { locale: uk })
+                        : isToday(new Date(t.createdAt))
+                          ? 'Today'
+                          : isYesterday(new Date(t.createdAt))
+                            ? 'Yesterday'
+                            : format(new Date(t.createdAt), 'MMM d', { locale: uk })
+                      return (
+                        <div
+                          key={t.id}
+                          className="flex items-center gap-3 p-3 rounded-xl border border-border/60 hover:border-border transition-colors cursor-pointer group"
+                          onClick={() => setOpenTaskId(t.id)}
+                        >
+                          <button
+                            className="shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors"
+                            style={t.isDone ? { backgroundColor: '#2a6ff3', borderColor: '#2a6ff3' } : { borderColor: '#cbd5e1' }}
+                            onClick={(e) => { e.stopPropagation(); handleToggleTask(t.id, t.isDone) }}
+                          >
+                            {t.isDone && (
+                              <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                                <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                            )}
+                          </button>
+                          <span className={`flex-1 text-sm leading-snug ${t.isDone ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+                            {t.title}
+                          </span>
+                          <span className="text-xs text-muted-foreground shrink-0">{dateStr}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <button
+              className="mt-4 w-full py-3 rounded-xl text-sm font-medium text-white flex items-center justify-center gap-2 transition-opacity hover:opacity-90"
+              style={{ backgroundColor: '#2a6ff3' }}
+              onClick={() => { /* open new task */ }}
+            >
+              <Plus className="size-4" />
+              Add new Task
+            </button>
+          </div>
+
+          {/* Overall Progress */}
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-border/40 flex flex-col">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base font-semibold">Overall Progress</h2>
+              <button className="text-muted-foreground hover:text-foreground transition-colors">
+                <MoreVertical className="size-4" />
+              </button>
+            </div>
+
+            {/* Concentric rings chart */}
+            <div className="flex justify-center mb-4">
+              {radialData.length > 0 ? (
+                <div className="relative">
+                  <ResponsiveContainer width={200} height={200}>
+                    <RadialBarChart
+                      cx="50%" cy="50%"
+                      innerRadius={40} outerRadius={90}
+                      barSize={14}
+                      data={radialData}
+                      startAngle={90} endAngle={-270}
+                    >
+                      <RadialBar dataKey="value" cornerRadius={7} background={{ fill: '#f1f5f9' }} />
+                      <Tooltip
+                        content={({ active, payload }) => {
+                          if (!active || !payload?.length) return null
+                          const d = payload[0].payload
+                          return (
+                            <div className="bg-white border border-border rounded-lg shadow-lg px-3 py-2 text-xs">
+                              <p className="font-medium">{d.name}</p>
+                              <p className="text-muted-foreground">Progress: {d.value}%</p>
+                            </div>
+                          )
+                        }}
+                      />
+                    </RadialBarChart>
+                  </ResponsiveContainer>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="text-center bg-white rounded-lg px-3 py-1.5 shadow-sm border border-border/60">
+                      <p className="text-xs text-muted-foreground">All Tasks</p>
+                      <p className="text-lg font-bold">{s.total}</p>
+                      <p className="text-xs text-muted-foreground">{s.inProgress} in progress</p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="w-[200px] h-[200px] flex items-center justify-center text-sm text-muted-foreground">
+                  Немає проєктів
+                </div>
+              )}
+            </div>
+
+            {/* Projects table */}
+            <div className="flex flex-col gap-0">
+              <div className="grid grid-cols-3 text-xs font-semibold text-muted-foreground pb-2 border-b border-border/60">
+                <span>Projects Name</span>
+                <span className="text-center">Tasks</span>
+                <span className="text-right">Progress</span>
+              </div>
+              {projects.map((p) => (
+                <div key={p.id} className="grid grid-cols-3 items-center py-2.5 border-b border-border/40 last:border-0">
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
+                    <span className="truncate">{p.name}</span>
+                  </div>
+                  <span className="text-center text-sm text-muted-foreground">{p.total}</span>
+                  <span className="text-right text-sm font-medium">{p.progress}%</span>
+                </div>
+              ))}
+              {projects.length === 0 && (
+                <p className="text-sm text-muted-foreground py-3">Немає даних</p>
+              )}
+            </div>
+          </div>
+
         </div>
       </main>
 
       {openTaskId && (
-        <TaskModal
-          taskId={openTaskId}
-          onClose={() => setOpenTaskId(null)}
-        />
+        <TaskModal taskId={openTaskId} onClose={() => { setOpenTaskId(null); fetchData() }} />
       )}
     </div>
   )

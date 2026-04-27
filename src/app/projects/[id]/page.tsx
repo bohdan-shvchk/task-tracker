@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import Sidebar from '@/components/layout/Sidebar'
 import KanbanBoard from '@/components/kanban/KanbanBoard'
 import ListView from '@/components/task/ListView'
+import TimelineView from '@/components/task/TimelineView'
 import TaskModal from '@/components/task/TaskModal'
 import TrashModal from '@/components/task/TrashModal'
 import PomodoroTimer from '@/components/pomodoro/PomodoroTimer'
@@ -19,12 +20,12 @@ interface Props {
   params: Promise<{ id: string }>
 }
 
-type View = 'kanban' | 'list'
+type View = 'kanban' | 'list' | 'timeline'
 
 const VIEW_TABS = [
   { id: 'kanban' as View, label: 'Kanban', icon: LayoutDashboard, enabled: true },
   { id: 'list' as View, label: 'Table', icon: Table2, enabled: true },
-  { id: null, label: 'Timeline', icon: GanttChart, enabled: false },
+  { id: 'timeline' as View, label: 'Timeline', icon: GanttChart, enabled: true },
   { id: null, label: 'Galaxy View', icon: Network, enabled: false },
   { id: null, label: 'Archive', icon: Archive, enabled: false },
 ]
@@ -39,7 +40,10 @@ export default function ProjectPage({ params }: Props) {
   const [editingName, setEditingName] = useState(false)
   const [nameInput, setNameInput] = useState('')
   const [iconPickerOpen, setIconPickerOpen] = useState(false)
-  const [view, setView] = useState<View>('kanban')
+  const [view, setView] = useState<View>(() => {
+    if (typeof window === 'undefined') return 'kanban'
+    return (localStorage.getItem('project-view') as View) ?? 'kanban'
+  })
 
   const [isNewTask, setIsNewTask] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState(false)
@@ -168,6 +172,14 @@ export default function ProjectPage({ params }: Props) {
   }
 
   const handleRefresh = () => { fetchTasks(); fetchProject() }
+
+  const handleStatusRename = (statusId: string, name: string) => {
+    setProject((p) => p ? { ...p, statuses: p.statuses.map((s) => s.id === statusId ? { ...s, name } : s) } : p)
+  }
+
+  const handleStatusAdd = (status: import('@/lib/types').Status) => {
+    setProject((p) => p ? { ...p, statuses: [...p.statuses, status] } : p)
+  }
 
   if (loading) {
     return (
@@ -306,8 +318,8 @@ export default function ProjectPage({ params }: Props) {
                 key={label}
                 disabled={!enabled}
                 onClick={() => {
-                  if (tabId === 'list') { setView('list'); fetchTasks(); fetchProject() }
-                  else if (tabId) setView(tabId)
+                  if (tabId === 'list' || tabId === 'timeline') { setView(tabId); localStorage.setItem('project-view', tabId); fetchTasks(); fetchProject() }
+                  else if (tabId) { setView(tabId); localStorage.setItem('project-view', tabId) }
                 }}
                 className={cn(
                   'flex items-center gap-1.5 px-3 text-sm border-b-2 transition-colors',
@@ -325,7 +337,7 @@ export default function ProjectPage({ params }: Props) {
 
         <div className={cn(
           'flex-1 min-h-0',
-          view === 'kanban' ? 'overflow-hidden' : 'overflow-auto px-6 py-5'
+          view === 'kanban' ? 'overflow-hidden' : view === 'list' ? 'overflow-auto px-6 py-5' : 'overflow-hidden'
         )}>
           {view === 'kanban' ? (
             <KanbanBoard
@@ -336,13 +348,23 @@ export default function ProjectPage({ params }: Props) {
               onAddTask={handleAddTask}
               onRefresh={handleRefresh}
             />
-          ) : (
+          ) : view === 'list' ? (
             <ListView
               tasks={tasks}
               statuses={project.statuses}
+              projectId={id}
               onTaskClick={setOpenTaskId}
               onRefresh={handleRefresh}
               onStatusColorChange={handleStatusColorChange}
+              onAddTask={handleAddTask}
+              onStatusRename={handleStatusRename}
+              onStatusAdd={handleStatusAdd}
+            />
+          ) : (
+            <TimelineView
+              tasks={tasks}
+              statuses={project.statuses}
+              onTaskClick={setOpenTaskId}
             />
           )}
         </div>

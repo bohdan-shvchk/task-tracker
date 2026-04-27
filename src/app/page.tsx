@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Plus, Search, Filter, SortAsc, ClipboardList, Trash2 } from 'lucide-react'
+import { ProjectIcon } from '@/components/ui/icon-picker'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -298,24 +299,13 @@ export default function DashboardPage() {
           ) : (
             <div className="flex flex-col gap-1">
               {projects.map((proj) => {
-                const initials = proj.name
-                  .split(' ')
-                  .map((w) => w[0])
-                  .slice(0, 2)
-                  .join('')
-                  .toUpperCase()
                 return (
                   <div key={proj.id} className="group flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-muted transition-colors">
                     <a
                       href={`/projects/${proj.id}`}
                       className="flex items-center gap-2.5 flex-1 min-w-0"
                     >
-                      <div
-                        className="w-6 h-6 rounded-md flex items-center justify-center text-white text-xs font-bold shrink-0"
-                        style={{ backgroundColor: proj.color }}
-                      >
-                        {initials}
-                      </div>
+                      <ProjectIcon icon={proj.icon} color={proj.color} size="sm" />
                       <span className="text-sm truncate">{proj.name}</span>
                     </a>
                     {deletingProjectId === proj.id ? (

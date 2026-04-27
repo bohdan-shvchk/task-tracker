@@ -24,6 +24,7 @@ export interface Task {
   title: string
   description?: string
   priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'
+  startDate?: string
   deadline?: string
   order: number
   projectId: string

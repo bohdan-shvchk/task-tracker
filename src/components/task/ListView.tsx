@@ -1,7 +1,17 @@
 'use client'
 
-import React, { useState, useEffect, useRef } from 'react'
-import { ChevronDown, ChevronRight, Check, CalendarIcon, Flag, Paperclip } from 'lucide-react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { ChevronDown, ChevronRight, Check, CalendarIcon, Flag, Paperclip, Plus, X, GripVertical } from 'lucide-react'
+import {
+  DndContext, DragEndEvent, DragOverEvent, DragStartEvent,
+  PointerSensor, useSensor, useSensors, DragOverlay,
+  pointerWithin, closestCenter,
+} from '@dnd-kit/core'
+import {
+  SortableContext, useSortable, arrayMove, verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import { useDroppable } from '@dnd-kit/core'
 import { Task, Status, Label } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/store/app-store'
@@ -22,12 +32,9 @@ const PRIORITY_LABELS: Record<string, string> = {
 
 type GroupBy = 'none' | 'status' | 'priority' | 'label'
 
-// ─── Styled Select ────────────────────────────────────────────────────────────
+// ─── Styled Select ─────────────────────────────────────────────────────────────
 function StyledSelect({ value, onChange, children, className }: {
-  value: string
-  onChange: (v: string) => void
-  children: React.ReactNode
-  className?: string
+  value: string; onChange: (v: string) => void; children: React.ReactNode; className?: string
 }) {
   return (
     <div className={cn('relative inline-flex items-center', className)}>
@@ -43,7 +50,7 @@ function StyledSelect({ value, onChange, children, className }: {
   )
 }
 
-// ─── Task Row ─────────────────────────────────────────────────────────────────
+// ─── Task Row ──────────────────────────────────────────────────────────────────
 interface RowProps {
   task: Task
   statuses: Status[]
@@ -51,9 +58,11 @@ interface RowProps {
   onTaskClick: (id: string) => void
   onRefresh?: () => void
   level?: number
+  dragHandleProps?: React.HTMLAttributes<HTMLDivElement>
+  isDragging?: boolean
 }
 
-function TaskRow({ task, statuses, allLabels, onTaskClick, onRefresh, level = 0 }: RowProps) {
+function TaskRow({ task, statuses, allLabels, onTaskClick, onRefresh, level = 0, dragHandleProps, isDragging }: RowProps) {
   const { setOpenTaskId } = useAppStore()
   const [subtasksExpanded, setSubtasksExpanded] = useState(false)
   const [statusId, setStatusId] = useState(task.statusId)
@@ -61,15 +70,11 @@ function TaskRow({ task, statuses, allLabels, onTaskClick, onRefresh, level = 0 
   const [taskLabels, setTaskLabels] = useState(task.labels ?? [])
   const [deadline, setDeadline] = useState(task.deadline ? new Date(task.deadline) : undefined)
 
-  // Sync local state when parent refreshes tasks from server
-  const prevTaskId = useRef(task.id)
   useEffect(() => {
-    // Reset on task ID change (different row) or sync on prop update
     setStatusId(task.statusId)
     setPriority(task.priority)
     setTaskLabels(task.labels ?? [])
     setDeadline(task.deadline ? new Date(task.deadline) : undefined)
-    prevTaskId.current = task.id
   }, [task.statusId, task.priority, task.labels, task.deadline, task.id])
 
   const status = statuses.find(s => s.id === statusId)
@@ -81,18 +86,12 @@ function TaskRow({ task, statuses, allLabels, onTaskClick, onRefresh, level = 0 
 
   const patch = async (data: object) => {
     await fetch(`/api/tasks/${task.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
     })
     onRefresh?.()
   }
 
-  const handleToggleDone = async () => {
-    await fetch(`/api/tasks/${task.id}/toggle-done`, { method: 'POST' })
-    onRefresh?.()
-  }
-
+  const handleToggleDone = async () => { await fetch(`/api/tasks/${task.id}/toggle-done`, { method: 'POST' }); onRefresh?.() }
   const handleStatusChange = (sid: string) => { setStatusId(sid); patch({ statusId: sid }) }
   const handlePriorityChange = (p: string | null) => { setPriority(p as Task['priority']); patch({ priority: p }) }
   const handleDeadlineChange = (date: Date | undefined) => { setDeadline(date); patch({ deadline: date ? date.toISOString() : null }) }
@@ -108,14 +107,22 @@ function TaskRow({ task, statuses, allLabels, onTaskClick, onRefresh, level = 0 
     }
   }
 
-  const cols = 'grid-cols-[1fr_150px_130px_130px_1fr]'
+  const cols = 'grid-cols-[28px_1fr_150px_130px_130px_1fr]'
   const pl = 16 + level * 28
 
   return (
     <>
-      <div className={cn('grid border-b border-border last:border-b-0 hover:bg-muted/20 transition-colors group', cols)}>
+      <div className={cn('grid border-b border-[#e2e8f0] bg-background group', cols, isDragging && 'opacity-50')}>
+        {/* Drag handle */}
+        <div
+          className="flex items-center justify-center text-muted-foreground opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing transition-opacity"
+          {...dragHandleProps}
+        >
+          <GripVertical className="size-3.5" />
+        </div>
+
         {/* Name */}
-        <div className="py-2.5 flex items-start gap-2 min-w-0 pr-3" style={{ paddingLeft: pl }}>
+        <div className="py-5 flex items-start gap-2 min-w-0 pr-6" style={{ paddingLeft: pl }}>
           {level > 0 ? (
             <Button variant="ghost" size="icon" onClick={handleToggleDone} className="shrink-0 mt-0.5 size-5">
               <div className={cn('w-3.5 h-3.5 rounded border flex items-center justify-center transition-colors', status?.isDone ? 'bg-primary border-primary' : 'border-border hover:border-primary')}>
@@ -135,7 +142,7 @@ function TaskRow({ task, statuses, allLabels, onTaskClick, onRefresh, level = 0 
           <div className="flex flex-col gap-0.5 min-w-0 flex-1">
             <Button
               variant="ghost"
-              className={cn('text-sm font-medium text-left hover:text-primary transition-colors truncate h-auto px-0 py-0 justify-start', level > 0 && status?.isDone && 'line-through opacity-50')}
+              className={cn('text-sm font-medium text-left truncate h-auto px-0 py-0 justify-start hover:bg-transparent', level > 0 && status?.isDone && 'line-through opacity-50')}
               onClick={() => level > 0 ? setOpenTaskId(task.id) : onTaskClick(task.id)}
             >
               {task.title || <span className="text-muted-foreground italic">Без назви</span>}
@@ -150,11 +157,11 @@ function TaskRow({ task, statuses, allLabels, onTaskClick, onRefresh, level = 0 
         </div>
 
         {/* Status */}
-        <div className="px-3 py-2.5 flex items-center">
+        <div className="px-6 py-5 flex items-center">
           <DropdownMenu>
-            <DropdownMenuTrigger className="focus:outline-none">
+            <DropdownMenuTrigger render={<span />} nativeButton={false} className="cursor-pointer focus:outline-none">
               {status ? (
-                <span className="text-xs px-2 py-0.5 rounded-full font-medium text-white whitespace-nowrap hover:opacity-80 transition-opacity cursor-pointer" style={{ backgroundColor: status.color }}>
+                <span className="text-xs px-2 py-0.5 rounded-full font-medium text-white whitespace-nowrap select-none" style={{ backgroundColor: status.color }}>
                   {status.name}
                 </span>
               ) : <span className="text-xs text-muted-foreground">—</span>}
@@ -172,15 +179,15 @@ function TaskRow({ task, statuses, allLabels, onTaskClick, onRefresh, level = 0 
         </div>
 
         {/* Priority */}
-        <div className="px-3 py-2.5 flex items-center">
+        <div className="px-6 py-5 flex items-center">
           <DropdownMenu>
             <DropdownMenuTrigger className="focus:outline-none">
               {priority ? (
-                <span className="flex items-center gap-1 text-xs font-medium text-foreground cursor-pointer hover:opacity-80 transition-opacity">
+                <span className="flex items-center gap-1 text-xs font-medium text-foreground cursor-pointer">
                   <Flag className="size-3 shrink-0" style={{ color: PRIORITY_COLORS[priority] }} fill={PRIORITY_COLORS[priority]} />
                   {PRIORITY_LABELS[priority]}
                 </span>
-              ) : <span className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer">—</span>}
+              ) : <span className="text-xs text-muted-foreground cursor-pointer">—</span>}
             </DropdownMenuTrigger>
             <DropdownMenuContent>
               {Object.entries(PRIORITY_LABELS).map(([k, v]) => (
@@ -201,16 +208,16 @@ function TaskRow({ task, statuses, allLabels, onTaskClick, onRefresh, level = 0 
         </div>
 
         {/* Deadline */}
-        <div className="px-3 py-2.5 flex items-center">
+        <div className="px-6 py-5 flex items-center">
           <Popover>
             <PopoverTrigger className="focus:outline-none">
               {deadline ? (
-                <span className={cn('flex items-center gap-1 text-xs cursor-pointer hover:opacity-80 transition-opacity', isOverdue ? 'text-red-500' : 'text-foreground')}>
+                <span className={cn('flex items-center gap-1 text-xs cursor-pointer', isOverdue ? 'text-red-500' : 'text-foreground')}>
                   <CalendarIcon className="size-3 shrink-0" />
                   {deadline.toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                 </span>
               ) : (
-                <span className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 cursor-pointer">
+                <span className="text-xs text-muted-foreground flex items-center gap-1 cursor-pointer">
                   <CalendarIcon className="size-3" />—
                 </span>
               )}
@@ -229,18 +236,18 @@ function TaskRow({ task, statuses, allLabels, onTaskClick, onRefresh, level = 0 
         </div>
 
         {/* Labels */}
-        <div className="px-3 py-2.5 flex items-center">
+        <div className="px-6 py-5 flex items-center">
           <Popover>
             <PopoverTrigger className="focus:outline-none">
               <div className="flex items-center flex-wrap gap-1 cursor-pointer">
                 {taskLabels.length > 0 ? (
                   taskLabels.map(tl => (
-                    <span key={tl.label.id} className="text-[10px] px-1.5 py-0.5 rounded-full font-medium text-white hover:opacity-80" style={{ backgroundColor: tl.label.color }}>
+                    <span key={tl.label.id} className="text-[10px] px-1.5 py-0.5 rounded-full font-medium text-white" style={{ backgroundColor: tl.label.color }}>
                       {tl.label.name}
                     </span>
                   ))
                 ) : (
-                  <span className="text-xs text-muted-foreground hover:text-foreground transition-colors">—</span>
+                  <span className="text-xs text-muted-foreground">—</span>
                 )}
               </div>
             </PopoverTrigger>
@@ -275,28 +282,152 @@ function TaskRow({ task, statuses, allLabels, onTaskClick, onRefresh, level = 0 
   )
 }
 
+// ─── Sortable Task Row ─────────────────────────────────────────────────────────
+function SortableTaskRow(props: Omit<RowProps, 'dragHandleProps' | 'isDragging'>) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: props.task.id })
+  return (
+    <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }}>
+      <TaskRow {...props} dragHandleProps={{ ...attributes, ...listeners }} isDragging={isDragging} />
+    </div>
+  )
+}
+
+// ─── Droppable Group ───────────────────────────────────────────────────────────
+function DroppableGroup({ id, children }: { id: string; children: React.ReactNode }) {
+  const { setNodeRef } = useDroppable({ id })
+  return <div ref={setNodeRef} className="[&>div:last-child>div]:border-b-0">{children}</div>
+}
+
 // ─── Main ListView ─────────────────────────────────────────────────────────────
 interface Props {
   tasks: Task[]
   statuses: Status[]
+  projectId?: string
   onTaskClick: (id: string) => void
   onRefresh?: () => void
   onStatusColorChange?: (statusId: string, color: string) => void
+  onAddTask?: (statusId: string, title: string) => Promise<void>
+  onStatusRename?: (statusId: string, name: string) => void
+  onStatusAdd?: (status: Status) => void
 }
 
-export default function ListView({ tasks, statuses, onTaskClick, onRefresh, onStatusColorChange }: Props) {
+export default function ListView({ tasks, statuses, projectId, onTaskClick, onRefresh, onStatusColorChange, onAddTask, onStatusRename, onStatusAdd }: Props) {
   const [statusFilter, setStatusFilter] = useState('all')
   const [priorityFilter, setPriorityFilter] = useState('all')
   const [groupBy, setGroupBy] = useState<GroupBy>('status')
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
   const [allLabels, setAllLabels] = useState<Label[]>([])
   const [openColorPicker, setOpenColorPicker] = useState<string | null>(null)
+  const [addingToStatus, setAddingToStatus] = useState<string | null>(null)
+  const [newTaskTitle, setNewTaskTitle] = useState('')
+  const [editingStatusId, setEditingStatusId] = useState<string | null>(null)
+  const [editingStatusName, setEditingStatusName] = useState('')
+  const [addingStatus, setAddingStatus] = useState(false)
+  const [newStatusName, setNewStatusName] = useState('')
+  const [localTasks, setLocalTasks] = useState<Task[]>(tasks)
+  const [activeTask, setActiveTask] = useState<Task | null>(null)
+  const localTasksRef = useRef<Task[]>(tasks)
 
+  useEffect(() => { setLocalTasks(tasks); localTasksRef.current = tasks }, [tasks])
   useEffect(() => {
     fetch('/api/labels').then(r => r.ok ? r.json() : []).then(setAllLabels).catch(() => {})
   }, [])
 
-  const filtered = tasks.filter(t => {
+  const setTasks = useCallback((updater: (prev: Task[]) => Task[]) => {
+    setLocalTasks(prev => { const next = updater(prev); localTasksRef.current = next; return next })
+  }, [])
+
+  const handleRenameStatus = async (statusId: string, name: string) => {
+    const trimmed = name.trim()
+    setEditingStatusId(null)
+    if (!trimmed) return
+    onStatusRename?.(statusId, trimmed)
+    try {
+      await fetch(`/api/statuses/${statusId}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: trimmed }),
+      })
+    } catch { onRefresh?.() }
+  }
+
+  const handleAddStatus = async () => {
+    const trimmed = newStatusName.trim()
+    if (!trimmed || !projectId) return
+    setAddingStatus(false); setNewStatusName('')
+    try {
+      const res = await fetch(`/api/projects/${projectId}/statuses`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: trimmed }),
+      })
+      if (res.ok) {
+        const status: Status = await res.json()
+        onStatusAdd?.(status)
+      }
+    } catch { onRefresh?.() }
+  }
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
+
+  const handleDragStart = ({ active }: DragStartEvent) => {
+    setActiveTask(localTasksRef.current.find(t => t.id === String(active.id)) ?? null)
+  }
+
+  const handleDragOver = ({ active, over }: DragOverEvent) => {
+    if (!over) return
+    const activeId = String(active.id)
+    const overId = String(over.id)
+    const tasks = localTasksRef.current
+    const dragged = tasks.find(t => t.id === activeId)
+    if (!dragged) return
+
+    // Determine target status
+    const overStatus = statuses.find(s => s.id === overId || overId === `drop-${s.id}`)
+    const overTask = tasks.find(t => t.id === overId)
+    const targetStatusId = overStatus?.id ?? overTask?.statusId
+
+    if (targetStatusId && dragged.statusId !== targetStatusId) {
+      setTasks(prev => prev.map(t => t.id === activeId ? { ...t, statusId: targetStatusId } : t))
+    }
+  }
+
+  const handleDragEnd = async ({ active, over }: DragEndEvent) => {
+    setActiveTask(null)
+    if (!over) return
+    const activeId = String(active.id)
+    const overId = String(over.id)
+    const tasks = localTasksRef.current
+    const movedTask = tasks.find(t => t.id === activeId)
+    if (!movedTask) return
+
+    const overTask = tasks.find(t => t.id === overId)
+    const overStatus = statuses.find(s => s.id === overId || overId === `drop-${s.id}`)
+    const newStatusId = overStatus?.id ?? overTask?.statusId ?? movedTask.statusId
+
+    const columnTasks = tasks.filter(t => t.statusId === newStatusId).sort((a, b) => a.order - b.order)
+    const oldIndex = columnTasks.findIndex(t => t.id === activeId)
+    const newIndex = columnTasks.findIndex(t => t.id === overId)
+
+    let reordered = columnTasks
+    if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
+      reordered = arrayMove(columnTasks, oldIndex, newIndex)
+    }
+
+    setTasks(prev => {
+      const others = prev.filter(t => t.statusId !== newStatusId && t.id !== activeId)
+      const updated = reordered.map((t, i) => ({ ...t, order: i, statusId: newStatusId }))
+      return [...others, ...updated]
+    })
+
+    const finalOrder = reordered.findIndex(t => t.id === activeId)
+    try {
+      await fetch(`/api/tasks/${activeId}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ statusId: newStatusId, order: finalOrder }),
+      })
+    } catch { onRefresh?.() }
+  }
+
+  const filtered = localTasks.filter(t => {
     if (statusFilter !== 'all' && t.statusId !== statusFilter) return false
     if (priorityFilter !== 'all' && t.priority !== priorityFilter) return false
     return true
@@ -310,13 +441,11 @@ export default function ListView({ tasks, statuses, onTaskClick, onRefresh, onSt
 
   const buildGroups = (): Group[] => {
     if (groupBy === 'none') return [{ key: 'all', label: 'Всі завдання', tasks: filtered }]
-
     if (groupBy === 'status') {
       return statuses
         .map(s => ({ key: s.id, label: s.name, color: s.color, tasks: filtered.filter(t => t.statusId === s.id) }))
-        .filter(g => g.tasks.length > 0)
+        .filter(g => g.tasks.length > 0 || true)
     }
-
     if (groupBy === 'priority') {
       const pGroups: Group[] = (['URGENT', 'HIGH', 'MEDIUM', 'LOW'] as const).map(p => ({
         key: p, label: PRIORITY_LABELS[p], color: PRIORITY_COLORS[p],
@@ -325,126 +454,221 @@ export default function ListView({ tasks, statuses, onTaskClick, onRefresh, onSt
       pGroups.push({ key: 'none', label: 'Без пріоритету', tasks: filtered.filter(t => !t.priority) })
       return pGroups.filter(g => g.tasks.length > 0)
     }
-
     if (groupBy === 'label') {
       return [
         ...allLabels.map(lbl => ({
           key: lbl.id, label: lbl.name, color: lbl.color,
           tasks: filtered.filter(t => t.labels?.some(tl => tl.label.id === lbl.id)),
         })),
-        { key: 'none', label: 'Без мітки', color: undefined, tasks: filtered.filter(t => !t.labels?.length) },
+        { key: 'none', label: 'Без мітки', tasks: filtered.filter(t => !t.labels?.length) },
       ].filter(g => g.tasks.length > 0)
     }
-
     return [{ key: 'all', label: 'Всі завдання', tasks: filtered }]
   }
 
   const groups = buildGroups()
-  const cols = 'grid-cols-[1fr_150px_130px_130px_1fr]'
+  const cols = 'grid-cols-[28px_1fr_150px_130px_130px_1fr]'
   const showGroupHeaders = groupBy !== 'none'
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* Toolbar */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <StyledSelect value={statusFilter} onChange={setStatusFilter}>
-          <option value="all">Всі статуси</option>
-          {statuses.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-        </StyledSelect>
-        <StyledSelect value={priorityFilter} onChange={setPriorityFilter}>
-          <option value="all">Всі пріоритети</option>
-          {Object.entries(PRIORITY_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-        </StyledSelect>
-        <div className="ml-auto flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">Групувати:</span>
-          <StyledSelect value={groupBy} onChange={v => setGroupBy(v as GroupBy)}>
-            <option value="none">Без групування</option>
-            <option value="status">Статус</option>
-            <option value="priority">Пріоритет</option>
-            <option value="label">Мітки</option>
+    <DndContext sensors={sensors} collisionDetection={pointerWithin} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
+      <div className="flex flex-col gap-4">
+        {/* Toolbar */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <StyledSelect value={statusFilter} onChange={setStatusFilter}>
+            <option value="all">Всі статуси</option>
+            {statuses.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </StyledSelect>
+          <StyledSelect value={priorityFilter} onChange={setPriorityFilter}>
+            <option value="all">Всі пріоритети</option>
+            {Object.entries(PRIORITY_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </StyledSelect>
+          <div className="ml-auto flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">Групувати:</span>
+            <StyledSelect value={groupBy} onChange={v => setGroupBy(v as GroupBy)}>
+              <option value="none">Без групування</option>
+              <option value="status">Статус</option>
+              <option value="priority">Пріоритет</option>
+              <option value="label">Мітки</option>
+            </StyledSelect>
+          </div>
+        </div>
+
+        {/* Groups */}
+        <div className="flex flex-col gap-3">
+          {groups.length === 0 && (
+            <div className="bg-background border border-border rounded-xl px-4 py-10 text-sm text-muted-foreground text-center">Немає завдань</div>
+          )}
+          {groups.map(group => {
+            const isCollapsed = collapsedGroups.has(group.key)
+            const isStatusGroup = groupBy === 'status'
+            const statusId = isStatusGroup ? group.key : null
+            return (
+              <div key={group.key} className="border border-border rounded-xl overflow-hidden bg-background">
+                {/* Group header */}
+                {showGroupHeaders && (
+                  <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border select-none bg-[#f1f5f9]">
+                    <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground transition-colors" onClick={() => toggleGroup(group.key)}>
+                      {isCollapsed ? <ChevronRight className="size-4" /> : <ChevronDown className="size-4" />}
+                    </Button>
+
+                    {/* Status color picker */}
+                    {isStatusGroup && group.color && onStatusColorChange ? (
+                      <div className="relative shrink-0">
+                        <Button
+                          variant="ghost" size="icon"
+                          className="w-3 h-3 rounded-full transition-all p-0 min-w-0"
+                          style={{ backgroundColor: group.color }}
+                          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = `0 0 0 2px white, 0 0 0 3.5px ${group.color}` }}
+                          onMouseLeave={e => { if (openColorPicker !== group.key) (e.currentTarget as HTMLButtonElement).style.boxShadow = '' }}
+                          onClick={e => { e.stopPropagation(); setOpenColorPicker(openColorPicker === group.key ? null : group.key) }}
+                        />
+                        {openColorPicker === group.key && (
+                          <div className="absolute top-5 left-0 z-50 bg-popover border border-border rounded-xl shadow-lg p-2" style={{ minWidth: 200 }} onClick={e => e.stopPropagation()}>
+                            <ColorPalette value={group.color} onChange={color => onStatusColorChange(group.key, color)} onSelect={() => setOpenColorPicker(null)} />
+                          </div>
+                        )}
+                      </div>
+                    ) : null}
+
+                    {isStatusGroup && editingStatusId === group.key ? (
+                      <input
+                        autoFocus
+                        className="flex-1 text-sm font-semibold bg-transparent border-b-2 border-ring outline-none px-0"
+                        style={{ color: group.color ?? undefined }}
+                        value={editingStatusName}
+                        onChange={e => setEditingStatusName(e.target.value)}
+                        onBlur={() => handleRenameStatus(group.key, editingStatusName)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') handleRenameStatus(group.key, editingStatusName)
+                          if (e.key === 'Escape') setEditingStatusId(null)
+                        }}
+                      />
+                    ) : (
+                      <div className="flex-1 flex items-center gap-2 cursor-pointer" onClick={() => toggleGroup(group.key)}>
+                        <span
+                          className={cn('text-sm font-semibold', isStatusGroup && 'cursor-text')}
+                          style={{ color: group.color ?? undefined }}
+                          onDoubleClick={e => {
+                            if (!isStatusGroup) return
+                            e.stopPropagation()
+                            setEditingStatusId(group.key)
+                            setEditingStatusName(group.label)
+                          }}
+                        >{group.label}</span>
+                        <span className="text-xs text-muted-foreground">{group.tasks.length}</span>
+                      </div>
+                    )}
+
+                    {isStatusGroup && onAddTask && statusId && (
+                      <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                        onClick={() => { setAddingToStatus(statusId); setNewTaskTitle('') }}>
+                        <Plus className="size-4" />
+                      </Button>
+                    )}
+                  </div>
+                )}
+
+                {!isCollapsed && (
+                  <>
+                    {/* Column headers */}
+                    <div className={cn('grid border-b border-border bg-muted/10', cols)}>
+                      <div />
+                      <div className="px-4 py-2 text-xs font-medium text-muted-foreground">Завдання</div>
+                      <div className="px-6 py-2 text-xs font-medium text-muted-foreground">Статус</div>
+                      <div className="px-6 py-2 text-xs font-medium text-muted-foreground">Пріоритет</div>
+                      <div className="px-6 py-2 text-xs font-medium text-muted-foreground">Дедлайн</div>
+                      <div className="px-6 py-2 text-xs font-medium text-muted-foreground">Мітки</div>
+                    </div>
+
+                    <SortableContext items={group.tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
+                      <DroppableGroup id={`drop-${group.key}`}>
+                        {group.tasks.map(task => (
+                          <SortableTaskRow key={task.id} task={task} statuses={statuses} allLabels={allLabels} onTaskClick={onTaskClick} onRefresh={onRefresh} />
+                        ))}
+                        {group.tasks.length === 0 && (
+                          <div className="px-4 py-6 text-sm text-muted-foreground text-center">Немає завдань</div>
+                        )}
+                      </DroppableGroup>
+                    </SortableContext>
+
+                    {/* Inline add form */}
+                    {isStatusGroup && addingToStatus === statusId && (
+                      <div className="flex items-center gap-2 px-4 py-2 border-t border-border bg-background">
+                        <input
+                          autoFocus
+                          className="flex-1 text-sm border border-input rounded-lg px-3 py-1.5 outline-none focus:border-ring bg-background"
+                          placeholder="Назва завдання..."
+                          value={newTaskTitle}
+                          onChange={e => setNewTaskTitle(e.target.value)}
+                          onKeyDown={async e => {
+                            if (e.key === 'Enter' && newTaskTitle.trim() && statusId) {
+                              await onAddTask?.(statusId, newTaskTitle.trim())
+                              setAddingToStatus(null); setNewTaskTitle('')
+                            }
+                            if (e.key === 'Escape') { setAddingToStatus(null); setNewTaskTitle('') }
+                          }}
+                        />
+                        <Button size="sm" className="text-white border-0 hover:opacity-90" style={{ backgroundColor: 'var(--aqua-blue)' }}
+                          onClick={async () => {
+                            if (newTaskTitle.trim() && statusId) {
+                              await onAddTask?.(statusId, newTaskTitle.trim())
+                              setAddingToStatus(null); setNewTaskTitle('')
+                            }
+                          }}>Додати</Button>
+                        <Button variant="ghost" size="icon" onClick={() => { setAddingToStatus(null); setNewTaskTitle('') }}>
+                          <X className="size-4" />
+                        </Button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )
+          })}
+
+          {/* Add new status */}
+          {groupBy === 'status' && projectId && (
+            addingStatus ? (
+              <div className="flex items-center gap-2">
+                <input
+                  autoFocus
+                  className="flex-1 text-sm border border-input rounded-lg px-3 py-2 outline-none focus:border-ring bg-background"
+                  placeholder="Назва статусу..."
+                  value={newStatusName}
+                  onChange={e => setNewStatusName(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') handleAddStatus()
+                    if (e.key === 'Escape') { setAddingStatus(false); setNewStatusName('') }
+                  }}
+                />
+                <Button size="sm" className="text-white border-0 hover:opacity-90" style={{ backgroundColor: 'var(--aqua-blue)' }} onClick={handleAddStatus}>
+                  Додати
+                </Button>
+                <Button variant="ghost" size="icon" onClick={() => { setAddingStatus(false); setNewStatusName('') }}>
+                  <X className="size-4" />
+                </Button>
+              </div>
+            ) : (
+              <button
+                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors px-1 py-1"
+                onClick={() => { setAddingStatus(true); setNewStatusName('') }}
+              >
+                <Plus className="size-4" />
+                Новий статус
+              </button>
+            )
+          )}
         </div>
       </div>
 
-      {/* Groups */}
-      <div className="flex flex-col gap-3">
-        {groups.length === 0 ? (
-          <div className="bg-background border border-border rounded-xl px-4 py-10 text-sm text-muted-foreground text-center">Немає завдань</div>
-        ) : groups.map(group => {
-          const isCollapsed = collapsedGroups.has(group.key)
-          return (
-            <div key={group.key} className="border border-border rounded-xl overflow-hidden"
-              style={{ backgroundColor: group.color ? `${group.color}1A` : 'hsl(var(--background))' }}>
-              {/* Group header */}
-              {showGroupHeaders && (
-                <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border select-none"
-                  style={{ backgroundColor: group.color ? `${group.color}26` : 'hsl(var(--muted) / 0.2)' }}>
-                  <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground transition-colors" onClick={() => toggleGroup(group.key)}>
-                    {isCollapsed ? <ChevronRight className="size-4" /> : <ChevronDown className="size-4" />}
-                  </Button>
-
-                  {/* Status color picker */}
-                  {groupBy === 'status' && group.color && onStatusColorChange ? (
-                    <div className="relative shrink-0">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="w-3 h-3 rounded-full transition-all p-0 min-w-0"
-                        style={{ backgroundColor: group.color }}
-                        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = `0 0 0 2px white, 0 0 0 3.5px ${group.color}` }}
-                        onMouseLeave={e => { if (openColorPicker !== group.key) (e.currentTarget as HTMLButtonElement).style.boxShadow = '' }}
-                        onClick={e => { e.stopPropagation(); setOpenColorPicker(openColorPicker === group.key ? null : group.key) }}
-                      ></Button>
-                      {openColorPicker === group.key && (
-                        <div
-                          className="absolute top-5 left-0 z-50 bg-popover border border-border rounded-xl shadow-lg p-2"
-                          style={{ minWidth: 200 }}
-                          onClick={e => e.stopPropagation()}
-                        >
-                          <ColorPalette
-                            value={group.color}
-                            onChange={color => onStatusColorChange(group.key, color)}
-                            onSelect={() => setOpenColorPicker(null)}
-                          />
-                        </div>
-                      )}
-                    </div>
-                  ) : null}
-
-                  <Button variant="ghost" className="flex-1 flex items-center gap-2 text-left h-auto px-0 py-0 justify-start" onClick={() => toggleGroup(group.key)}>
-                    {group.color ? (
-                      <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full text-white" style={{ backgroundColor: group.color }}>
-                        {group.label}
-                      </span>
-                    ) : (
-                      <span className="text-sm font-semibold text-muted-foreground">{group.label}</span>
-                    )}
-                    <span className="text-xs text-muted-foreground">{group.tasks.length}</span>
-                  </Button>
-                </div>
-              )}
-
-              {!isCollapsed && (
-                <>
-                  {/* Column headers */}
-                  <div className={cn('grid border-b border-border bg-muted/10', cols)}>
-                    <div className="px-4 py-2 text-xs font-medium text-muted-foreground">Завдання</div>
-                    <div className="px-3 py-2 text-xs font-medium text-muted-foreground">Статус</div>
-                    <div className="px-3 py-2 text-xs font-medium text-muted-foreground">Пріоритет</div>
-                    <div className="px-3 py-2 text-xs font-medium text-muted-foreground">Дедлайн</div>
-                    <div className="px-3 py-2 text-xs font-medium text-muted-foreground">Мітки</div>
-                  </div>
-                  {group.tasks.length === 0 ? (
-                    <div className="px-4 py-6 text-sm text-muted-foreground text-center">Немає завдань</div>
-                  ) : group.tasks.map(task => (
-                    <TaskRow key={task.id} task={task} statuses={statuses} allLabels={allLabels} onTaskClick={onTaskClick} onRefresh={onRefresh} />
-                  ))}
-                </>
-              )}
-            </div>
-          )
-        })}
-      </div>
-    </div>
+      <DragOverlay>
+        {activeTask && (
+          <div className="border border-border rounded-lg bg-background shadow-lg opacity-95 px-4 py-5 text-sm font-medium rotate-1">
+            {activeTask.title}
+          </div>
+        )}
+      </DragOverlay>
+    </DndContext>
   )
 }
