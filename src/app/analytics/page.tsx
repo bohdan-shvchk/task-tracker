@@ -1,21 +1,22 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { format, isToday, isYesterday } from 'date-fns'
 import { uk } from 'date-fns/locale'
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell,
+  Tooltip, Legend, ResponsiveContainer,
   RadialBarChart, RadialBar,
 } from 'recharts'
 import {
   CheckCircle2, Clock, AlertCircle, CalendarDays, MoreVertical, Plus,
-  TrendingUp,
+  TrendingUp, Download, ChevronDown,
 } from 'lucide-react'
 import Sidebar from '@/components/layout/Sidebar'
 import { useAppStore } from '@/store/app-store'
 import { Project } from '@/lib/types'
 import TaskModal from '@/components/task/TaskModal'
+import { DateRangePicker, DateRange } from '@/components/ui/date-range-picker'
 
 /* ─── Types ────────────────────────────────────────────────── */
 interface DashboardData {
@@ -25,6 +26,7 @@ interface DashboardData {
   workloadByProject: Record<string, string | number>[]
   projects: { id: string; name: string; color: string; total: number; completed: number; progress: number }[]
   recentTasks: { id: string; title: string; deadline: string | null; isDone: boolean; createdAt: string }[]
+  projectTasks: { id: string; title: string; isDone: boolean; subtaskTotal: number; subtaskDone: number; progress: number }[]
 }
 
 /* ─── Gauge SVG ─────────────────────────────────────────────── */
@@ -145,25 +147,78 @@ function StatCard({
   )
 }
 
+
 /* ─── Page ──────────────────────────────────────────────────── */
 export default function AnalyticsPage() {
   const { setProjects, openTaskId, setOpenTaskId } = useAppStore()
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [allProjects, setAllProjects] = useState<Project[]>([])
+  const [selectedProjectId, setSelectedProjectId] = useState<string>('all')
+  const [dateRange, setDateRange] = useState<DateRange | undefined>()
+  const [projectDropdownOpen, setProjectDropdownOpen] = useState(false)
+  const [exporting, setExporting] = useState(false)
+  const filterRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (filterRef.current && !filterRef.current.contains(e.target as Node)) {
+        setProjectDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const buildQueryParams = useCallback(() => {
+    const params = new URLSearchParams()
+    if (selectedProjectId !== 'all') params.set('projectId', selectedProjectId)
+    if (dateRange?.from) params.set('from', dateRange.from.toISOString())
+    if (dateRange?.to) params.set('to', new Date(dateRange.to.setHours(23, 59, 59, 999)).toISOString())
+    return params.toString()
+  }, [selectedProjectId, dateRange])
 
   const fetchData = useCallback(async () => {
+    setLoading(true)
     try {
+      const qs = buildQueryParams()
       const [dashRes, projRes] = await Promise.all([
-        fetch('/api/analytics/dashboard'),
+        fetch(`/api/analytics/dashboard${qs ? `?${qs}` : ''}`),
         fetch('/api/projects'),
       ])
       if (dashRes.ok) setData(await dashRes.json())
-      if (projRes.ok) setProjects(await projRes.json() as Project[])
+      if (projRes.ok) {
+        const projs = await projRes.json() as Project[]
+        setProjects(projs)
+        setAllProjects(projs)
+      }
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
-  }, [setProjects])
+  }, [setProjects, buildQueryParams])
+
+  const handleExportCSV = async () => {
+    setExporting(true)
+    try {
+      const qs = buildQueryParams()
+      const res = await fetch(`/api/analytics/export${qs ? `?${qs}` : ''}`)
+      if (!res.ok) return
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `tasks-export-${format(new Date(), 'yyyy-MM-dd')}.csv`
+      a.click()
+      URL.revokeObjectURL(url)
+    } finally {
+      setExporting(false)
+    }
+  }
 
   useEffect(() => { fetchData() }, [fetchData])
+
+  useEffect(() => {
+    fetchData()
+  }, [selectedProjectId, dateRange]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleToggleTask = async (taskId: string, isDone: boolean) => {
     if (isDone) return // already done, click opens modal
@@ -204,8 +259,73 @@ export default function AnalyticsPage() {
 
       <main className="flex-1 overflow-y-auto px-6 py-6 flex flex-col gap-6">
 
-        {/* Page title */}
-        <h1 className="text-2xl font-bold text-foreground">Аналітика</h1>
+        {/* Page title + filters */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <h1 className="text-2xl font-bold text-foreground">Аналітика</h1>
+
+          <div ref={filterRef} className="flex flex-wrap items-center gap-2">
+
+            {/* Project filter */}
+            <div className="relative">
+              <button
+                onClick={() => setProjectDropdownOpen((v) => !v)}
+                className="flex items-center gap-2 bg-white border border-border/60 rounded-xl px-3 py-2 text-sm hover:border-border transition-colors shadow-sm"
+              >
+                {selectedProjectId === 'all' ? (
+                  <span className="text-muted-foreground">Всі проєкти</span>
+                ) : (
+                  <>
+                    <span
+                      className="w-2.5 h-2.5 rounded-full shrink-0"
+                      style={{ backgroundColor: allProjects.find((p) => p.id === selectedProjectId)?.color }}
+                    />
+                    <span>{allProjects.find((p) => p.id === selectedProjectId)?.name}</span>
+                  </>
+                )}
+                <ChevronDown className="size-3.5 text-muted-foreground" />
+              </button>
+              {projectDropdownOpen && (
+                <div className="absolute right-0 top-full mt-1 z-50 bg-white border border-border rounded-xl shadow-xl py-1 min-w-[160px]">
+                  <button
+                    className={`w-full text-left px-4 py-2 text-sm hover:bg-muted transition-colors ${selectedProjectId === 'all' ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}
+                    onClick={() => { setSelectedProjectId('all'); setProjectDropdownOpen(false) }}
+                  >
+                    Всі проєкти
+                  </button>
+                  {allProjects.map((p) => (
+                    <button
+                      key={p.id}
+                      className={`w-full text-left px-4 py-2 text-sm hover:bg-muted transition-colors flex items-center gap-2 ${selectedProjectId === p.id ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}
+                      onClick={() => { setSelectedProjectId(p.id); setProjectDropdownOpen(false) }}
+                    >
+                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
+                      {p.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Date range picker */}
+            <DateRangePicker
+              value={dateRange}
+              onChange={setDateRange}
+              placeholder="Виберіть період"
+              className="bg-white border border-border/60 rounded-xl shadow-sm hover:border-border"
+            />
+
+            {/* CSV Export */}
+            <button
+              onClick={handleExportCSV}
+              disabled={exporting}
+              className="flex items-center gap-2 bg-white border border-border/60 rounded-xl px-3 py-2 text-sm hover:border-border transition-colors shadow-sm disabled:opacity-60"
+            >
+              <Download className="size-4 text-muted-foreground" />
+              <span className="text-muted-foreground">{exporting ? 'Експорт...' : 'CSV'}</span>
+            </button>
+
+          </div>
+        </div>
 
         {/* ── Row 1: Summary cards ── */}
         <section>
@@ -408,69 +528,114 @@ export default function AnalyticsPage() {
               </button>
             </div>
 
-            {/* Concentric rings chart */}
-            <div className="flex justify-center mb-4">
-              {radialData.length > 0 ? (
-                <div className="relative">
-                  <ResponsiveContainer width={200} height={200}>
-                    <RadialBarChart
-                      cx="50%" cy="50%"
-                      innerRadius={40} outerRadius={90}
-                      barSize={14}
-                      data={radialData}
-                      startAngle={90} endAngle={-270}
-                    >
-                      <RadialBar dataKey="value" cornerRadius={7} background={{ fill: '#f1f5f9' }} />
-                      <Tooltip
-                        content={({ active, payload }) => {
-                          if (!active || !payload?.length) return null
-                          const d = payload[0].payload
-                          return (
-                            <div className="bg-white border border-border rounded-lg shadow-lg px-3 py-2 text-xs">
-                              <p className="font-medium">{d.name}</p>
-                              <p className="text-muted-foreground">Progress: {d.value}%</p>
-                            </div>
-                          )
+            {selectedProjectId === 'all' ? (
+              <>
+                {/* Concentric rings chart */}
+                <div className="flex justify-center mb-4">
+                  {radialData.length > 0 ? (
+                    <div className="relative">
+                      <ResponsiveContainer width={200} height={200}>
+                        <RadialBarChart
+                          cx="50%" cy="50%"
+                          innerRadius={40} outerRadius={90}
+                          barSize={14}
+                          data={radialData}
+                          startAngle={90} endAngle={-270}
+                        >
+                          <RadialBar dataKey="value" cornerRadius={7} background={{ fill: '#f1f5f9' }} />
+                          <Tooltip
+                            content={({ active, payload }) => {
+                              if (!active || !payload?.length) return null
+                              const d = payload[0].payload
+                              return (
+                                <div className="bg-white border border-border rounded-lg shadow-lg px-3 py-2 text-xs">
+                                  <p className="font-medium">{d.name}</p>
+                                  <p className="text-muted-foreground">Progress: {d.value}%</p>
+                                </div>
+                              )
+                            }}
+                          />
+                        </RadialBarChart>
+                      </ResponsiveContainer>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="text-center bg-white rounded-lg px-3 py-1.5 shadow-sm border border-border/60">
+                          <p className="text-xs text-muted-foreground">All Tasks</p>
+                          <p className="text-lg font-bold">{s.total}</p>
+                          <p className="text-xs text-muted-foreground">{s.inProgress} in progress</p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="w-[200px] h-[200px] flex items-center justify-center text-sm text-muted-foreground">
+                      Немає проєктів
+                    </div>
+                  )}
+                </div>
+
+                {/* Projects table */}
+                <div className="flex flex-col gap-0">
+                  <div className="grid grid-cols-3 text-xs font-semibold text-muted-foreground pb-2 border-b border-border/60">
+                    <span>Projects Name</span>
+                    <span className="text-center">Tasks</span>
+                    <span className="text-right">Progress</span>
+                  </div>
+                  {projects.map((p) => (
+                    <div key={p.id} className="grid grid-cols-3 items-center py-2.5 border-b border-border/40 last:border-0">
+                      <div className="flex items-center gap-2 text-sm font-medium">
+                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
+                        <span className="truncate">{p.name}</span>
+                      </div>
+                      <span className="text-center text-sm text-muted-foreground">{p.total}</span>
+                      <span className="text-right text-sm font-medium">{p.progress}%</span>
+                    </div>
+                  ))}
+                  {projects.length === 0 && (
+                    <p className="text-sm text-muted-foreground py-3">Немає даних</p>
+                  )}
+                </div>
+              </>
+            ) : (
+              /* Task list with progress for selected project */
+              <div className="flex flex-col gap-0 overflow-y-auto">
+                <div className="grid grid-cols-[1fr_80px] text-xs font-semibold text-muted-foreground pb-2 border-b border-border/60">
+                  <span>Task</span>
+                  <span className="text-right">Progress</span>
+                </div>
+                {(data?.projectTasks ?? []).length === 0 && (
+                  <p className="text-sm text-muted-foreground py-3">Немає задач</p>
+                )}
+                {(data?.projectTasks ?? []).map((t) => (
+                  <div
+                    key={t.id}
+                    className="py-3 border-b border-border/40 last:border-0 cursor-pointer hover:bg-muted/30 -mx-1 px-1 rounded-lg transition-colors"
+                    onClick={() => setOpenTaskId(t.id)}
+                  >
+                    <div className="flex items-center justify-between gap-3 mb-1.5">
+                      <span className={`text-sm leading-snug truncate ${t.isDone ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+                        {t.title}
+                      </span>
+                      <span className="text-xs font-semibold shrink-0" style={{ color: t.progress === 100 ? '#16a34a' : t.progress > 0 ? '#2a6ff3' : '#94a3b8' }}>
+                        {t.progress}%
+                      </span>
+                    </div>
+                    <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all"
+                        style={{
+                          width: `${t.progress}%`,
+                          backgroundColor: t.progress === 100 ? '#16a34a' : '#2a6ff3',
                         }}
                       />
-                    </RadialBarChart>
-                  </ResponsiveContainer>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="text-center bg-white rounded-lg px-3 py-1.5 shadow-sm border border-border/60">
-                      <p className="text-xs text-muted-foreground">All Tasks</p>
-                      <p className="text-lg font-bold">{s.total}</p>
-                      <p className="text-xs text-muted-foreground">{s.inProgress} in progress</p>
                     </div>
+                    {t.subtaskTotal > 0 && (
+                      <p className="text-[11px] text-muted-foreground mt-1">
+                        {t.subtaskDone}/{t.subtaskTotal} subtasks
+                      </p>
+                    )}
                   </div>
-                </div>
-              ) : (
-                <div className="w-[200px] h-[200px] flex items-center justify-center text-sm text-muted-foreground">
-                  Немає проєктів
-                </div>
-              )}
-            </div>
-
-            {/* Projects table */}
-            <div className="flex flex-col gap-0">
-              <div className="grid grid-cols-3 text-xs font-semibold text-muted-foreground pb-2 border-b border-border/60">
-                <span>Projects Name</span>
-                <span className="text-center">Tasks</span>
-                <span className="text-right">Progress</span>
+                ))}
               </div>
-              {projects.map((p) => (
-                <div key={p.id} className="grid grid-cols-3 items-center py-2.5 border-b border-border/40 last:border-0">
-                  <div className="flex items-center gap-2 text-sm font-medium">
-                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
-                    <span className="truncate">{p.name}</span>
-                  </div>
-                  <span className="text-center text-sm text-muted-foreground">{p.total}</span>
-                  <span className="text-right text-sm font-medium">{p.progress}%</span>
-                </div>
-              ))}
-              {projects.length === 0 && (
-                <p className="text-sm text-muted-foreground py-3">Немає даних</p>
-              )}
-            </div>
+            )}
           </div>
 
         </div>

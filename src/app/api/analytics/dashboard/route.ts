@@ -1,17 +1,35 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { subDays, startOfDay, format, subMonths, startOfMonth, endOfMonth } from 'date-fns'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = request.nextUrl
+    const projectIdParam = searchParams.get('projectId')
+    const fromParam = searchParams.get('from')
+    const toParam = searchParams.get('to')
+
+    const dateFrom = fromParam ? new Date(fromParam) : null
+    const dateTo = toParam ? new Date(new Date(toParam).setHours(23, 59, 59, 999)) : null
+
     const now = new Date()
     const today = startOfDay(now)
 
     const projects = await prisma.project.findMany({
+      where: projectIdParam ? { id: projectIdParam } : undefined,
       include: {
         statuses: true,
         tasks: {
-          where: { deletedAt: null, parentId: null },
+          where: {
+            deletedAt: null,
+            parentId: null,
+            ...(dateFrom || dateTo ? {
+              createdAt: {
+                ...(dateFrom ? { gte: dateFrom } : {}),
+                ...(dateTo ? { lte: dateTo } : {}),
+              }
+            } : {}),
+          },
           select: {
             id: true,
             title: true,
@@ -21,6 +39,10 @@ export async function GET() {
             createdAt: true,
             updatedAt: true,
             status: { select: { isDone: true } },
+            subtasks: {
+              where: { deletedAt: null },
+              select: { id: true, status: { select: { isDone: true } } },
+            },
           },
         },
       },
@@ -119,6 +141,25 @@ export async function GET() {
         createdAt: t.createdAt,
       }))
 
+    // Per-task progress for selected project view
+    const projectTasks = projectIdParam
+      ? allTasks.map((t) => {
+          const subTotal = t.subtasks.length
+          const subDone = t.subtasks.filter((s) => s.status.isDone).length
+          const progress = subTotal > 0
+            ? Math.round((subDone / subTotal) * 100)
+            : t.status.isDone ? 100 : 0
+          return {
+            id: t.id,
+            title: t.title,
+            isDone: t.status.isDone,
+            subtaskTotal: subTotal,
+            subtaskDone: subDone,
+            progress,
+          }
+        }).sort((a, b) => a.progress - b.progress === 0 ? (a.isDone ? 1 : -1) : b.progress - a.progress)
+      : []
+
     return NextResponse.json({
       summary: { total, completed, inProgress, pending, upcoming },
       weeklyLoad,
@@ -126,6 +167,7 @@ export async function GET() {
       workloadByProject,
       projects: projectsData,
       recentTasks,
+      projectTasks,
     })
   } catch (e) {
     console.error(e)
